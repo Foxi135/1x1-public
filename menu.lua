@@ -29,6 +29,7 @@ function buttonFuncs.openSettings()
 end
 local cyclelength = 10*60
 local cyclestart = 0
+local cycleoffset = 130
 
 local seed = 0
 
@@ -82,6 +83,8 @@ local function genBG()
 end
 
 
+
+
 return {
     load = function()
         ui = require "ui"
@@ -122,7 +125,7 @@ return {
 
         processed = {ui.process(menu.main)}
 
-        cyclestart = love.timer.getTime()-130
+        cyclestart = love.timer.getTime()-cycleoffset
 
         --[[do
             local canvas = love.graphics.newCanvas(700,1)
@@ -143,8 +146,13 @@ return {
         genBG()
     end,
     draw = function()
+        local cover;
         do
             local daynightcycletime = love.timer.getTime()-cyclestart
+            local fade = .5
+            if daynightcycletime-cycleoffset<fade then
+                cover = (fade-daynightcycletime+cycleoffset)/fade
+            end
             local daynightcycle = math.abs(1-(daynightcycletime%cyclelength*2)/cyclelength)
             local c1 = {.5*daynightcycle,.7*daynightcycle,daynightcycle*.9+.1}
             local c2 = {1,.55,.25}
@@ -162,9 +170,14 @@ return {
 
         setColor(1,1,1)
         --love.graphics.print("Menu")
-
+        
         for k, v in pairs(processed) do
             ui.draw(processed[k])
+        end
+        if cover then
+            setColor(0,0,0,cover)
+            love.graphics.rectangle("fill",0,0,love.graphics.getDimensions())
+            setColor(1,1,1)
         end
     end,
     update = function()

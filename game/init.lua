@@ -107,7 +107,9 @@ return {
                     chunk.spriteBatch = love.graphics.newSpriteBatch(imageEntityPallete,5000,"stream")
                     for k, v in pairs(eic) do
                         local e = level.entities[k]
-                        e.drawID = chunk.spriteBatch:add(quadPallete[entityAtlas[e.name].color],e.x,e.y,nil,.5)
+                        if not e.drawID then
+                            e.drawID = chunk.spriteBatch:add(quadPallete[entityAtlas[e.name].color],e.x,e.y,nil,.5)
+                        end
                     end
                 end
 

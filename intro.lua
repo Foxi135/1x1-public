@@ -19,18 +19,17 @@ return {
     load = function()
     end,
     draw = function()
-        do
-            love.graphics.setShader(bgShader)
-            local anim = math.min(endFrame,frame)
-            local x,y = -math.floor(anim/16)*w,-(anim%16)*(h+1)
-            local ww,wh = love.graphics.getDimensions()
-            local ox,oy = math.floor((ww-w)/2),math.floor((wh-h)/2)
-            love.graphics.setScissor(ox,oy,w,h)
-            setColor(1,1,1,(6-frame+anim)/5)
-            love.graphics.draw(movie,x+ox,y+oy)
-            love.graphics.setScissor()
-            love.graphics.setShader()
-        end
+        --love.graphics.clear(0.57640061042556,0.45936876145425,0.46278350619715)
+        love.graphics.setShader(bgShader)
+        local anim = math.min(endFrame,frame)
+        local x,y = -math.floor(anim/16)*w,-(anim%16)*(h+1)
+        local ww,wh = love.graphics.getDimensions()
+        local ox,oy = math.floor((ww-w)/2),math.floor((wh-h)/2)
+        love.graphics.setScissor(ox,oy,w,h)
+        setColor(1,1,1,(6-frame+anim)/5)
+        love.graphics.draw(movie,x+ox,y+oy)
+        love.graphics.setScissor()
+        love.graphics.setShader()
     end,
     update = function()
         if load then
@@ -38,5 +37,8 @@ return {
             load = nil
         end
         frame = math.floor(fps*(love.timer.getTime()-start))
+        if frame>endFrame+5 then
+            parts.start("menu")
+        end
     end
 }

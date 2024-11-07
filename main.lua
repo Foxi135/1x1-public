@@ -68,7 +68,7 @@ function love.run()
 		intro = require "intro",
 	}
 	function parts.start(p)
-		if parts.loaded then
+		if parts.loaded and parts.entries[parts.loaded].close then
 			parts.entries[parts.loaded].close()
 		end
 		parts.loaded = p
@@ -80,7 +80,7 @@ function love.run()
 	lovebird:init()
 
 	require("game.utilities").loadLevel("a")
-	parts.start("game")
+	parts.start("intro")
 
 	--[[love.filesystem.write("0_-1.bin",binser.serialize(
 		{

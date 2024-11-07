@@ -8,15 +8,14 @@ local manipulate = {
             level.entitiesInChunks[cx] = level.entitiesInChunks[cx] or {}
             level.entitiesInChunks[cx][cy] = level.entitiesInChunks[cx][cy] or {}
             level.entitiesInChunks[cx][cy][entity.id] = true
-            print(entity.drawID)
-            if entity.drawID and  level.entitiesInChunks[prevcx] and  level.entitiesInChunks[prevcx][prevcy] and level.chunks[cx][cy].spriteBatch then
+            if entity.drawID and level.entitiesInChunks[prevcx] and level.entitiesInChunks[prevcx][prevcy] then
                 level.chunks[prevcx][prevcy].spriteBatch:set(entity.drawID,0,0,0,0)
                 entity.drawID = nil
             end
         end
         if chunk.spriteBatch then
             if entity.drawID then
-                chunk.spriteBatch:set(entity.drawID,entity.x,entity.y,nil,.5)
+                chunk.spriteBatch:set(entity.drawID,quadPallete[entityAtlas[entity.name].color],entity.x,entity.y,nil,.5)
             else
                 entity.drawID = chunk.spriteBatch:add(quadPallete[entityAtlas[entity.name].color],entity.x,entity.y,nil,.5)
             end
