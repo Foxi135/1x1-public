@@ -164,10 +164,6 @@ return {
             love.graphics.draw(bg)
         end
 
-        for i = 1, 100000, 1 do
-            love.graphics.rectangle("fill",0,0,2,2)
-        end
-
         setColor(1,1,1)
         --love.graphics.print("Menu")
         
