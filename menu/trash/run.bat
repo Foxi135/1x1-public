@@ -1,1 +1,0 @@
-start cmd /k "cd C:\Users\Uzivatel\Desktop\cavegame4\menu && lua54 main.lua"
