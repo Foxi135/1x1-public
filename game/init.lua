@@ -4,6 +4,11 @@ require "game/chunks"
 collision = require "game/collision"
 love.keyboard.setKeyRepeat(true)
 
+function saveWorld(level,folder)
+    print(level,folder)
+end
+
+
 return {
     load = function() 
         --require "game/light"
@@ -24,6 +29,7 @@ return {
                 local x,y = i%(cam.maxx-cam.minx+1)+cam.minx,math.floor(i/(cam.maxx-cam.minx+1))+cam.miny
                 if y>cam.maxy then return end
                 i=i+1
+                
                 return i,x,y
             end
             function cam.eachVisibleChunk()
@@ -44,7 +50,7 @@ return {
         key = {}
         clicked = {}
 
-        tps = 20
+        tps = 30
         ticks = 0
         tickStart = love.timer.getTime()
     
@@ -72,8 +78,10 @@ return {
         level.entitiesInChunks = {}
         for i = 1, 5 do
             --utils.summonEntity("test",math.random(0,(level.mapSize-1)*1000)/1000,math.random(0,(level.mapSize-1)*1000)/1000,math.random(-3,3),math.random(-3,3))
-            utils.summonEntity("test2",i*1.3,.2,0,0)
+            utils.summonEntity("test2",i*1.3,190,0,-1)
         end
+
+
     end,
     draw = function()
         love.graphics.push()
@@ -112,18 +120,18 @@ return {
                         end
                     end
                 end
-
+                
                 love.graphics.draw(chunk.spriteBatch,tcx,tcy)
             end
         end
 
-        --[[local max;
+        local max;
         for i,cx,cy in cam.eachVisibleChunk() do
             max = i
             local x,y = math.floor((cx+cam.cx)*level.mapSize),math.floor((cy+cam.cy)*level.mapSize)
             love.graphics.rectangle("line",x,y,level.mapSize,level.mapSize)
-            --love.graphics.print(string.format("%d %d %d",i,cx,cy),x+level.mapSize/2,y)
-        end]]
+            love.graphics.print(string.format("%d %d %d",i,cx,cy),x+level.mapSize/2,y)
+        end
 
         love.graphics.setLineWidth(1/cam.zoom)
 
@@ -172,6 +180,7 @@ return {
             cam.minx,cam.miny = math.floor((-a-cam.x)/level.mapSize-cam.cx), math.floor((-b-cam.y)/level.mapSize-cam.cy)
             cam.maxx,cam.maxy = math.floor((a-cam.x)/level.mapSize-cam.cx), math.floor((b-cam.y)/level.mapSize-cam.cy)
         end
+
         
         cam.x = cam.x+((key.left and 5 or 0)+(key.right and -5 or 0))*(key.sprint and 1 or dt)
         cam.y = cam.y+((key.up and 5 or 0)+(key.down and -5 or 0))*(key.sprint and 1 or dt)
@@ -179,9 +188,9 @@ return {
 
         local now = (love.timer.getTime()-tickStart)*tps
         if now>ticks then
-            local dt = ticks-now
+            local dt = math.ceil(now)-ticks
             for i,cx,cy in cam.eachVisibleChunk() do
-                if level.entitiesInChunks[cx] and level.entitiesInChunks[cx][cy] and level.chunks[cx] and level.chunks[cy] then
+                if level.entitiesInChunks[cx] and level.entitiesInChunks[cx][cy] and level.chunks[cx] and level.chunks[cx][cy] then
                     local chunk = level.chunks[cx][cy]
                     local eic = level.entitiesInChunks[cx][cy]
                     
@@ -200,6 +209,12 @@ return {
         for i,cx,cy in cam.eachVisibleChunk() do -- load chunks
             utils.autoLoadChunk(cx,cy)
             utils.updateDrawableMap(cx,cy)
+        end
+        if not TEst then
+            for i = 1, 10, 1 do
+                utils.placetile(i*2,198,0,-1,{pixel.getColor(pixel.setProperty(pixel.setProperty(pixel.setProperty(pixel.big(0,0,0,0),"color",1),"model",5+i),"solid",1))})
+            end
+            TEst = true
         end
         if clicked[1] then
             local cx,cy,x,y = cam.screenPosToTilePos()
@@ -224,7 +239,7 @@ return {
     end,
     keypressed = function(key)
         if key == "f2" then
-
+            saveWorld(level,level.folder)
         end
         if key == "f5" then
 

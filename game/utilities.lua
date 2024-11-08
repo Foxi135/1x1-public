@@ -194,6 +194,7 @@ function utils.autoLoadChunk(cx,cy)
         local a = level.folder..cx.."_"..cy
         try_png = try_png and a..".png"
     end
+
     if try_png then
         print("GENERATE")
         utils.generateChunk(cx,cy)
@@ -242,6 +243,10 @@ function utils.summonEntity(name,x,y,cx,cy, signal)
 
     level.entitiesInChunks[cx][cy][i] = true
     
+    if entityAtlas[name].summoned then
+        entityAtlas[name].summoned(entity,signal)
+    end
+
     return i
 end
 

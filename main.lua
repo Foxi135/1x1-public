@@ -80,7 +80,7 @@ function love.run()
 	lovebird:init()
 
 	require("game.utilities").loadLevel("a")
-	parts.start("intro")
+	parts.start("game")
 
 	--[[love.filesystem.write("0_-1.bin",binser.serialize(
 		{
