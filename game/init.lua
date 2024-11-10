@@ -5,14 +5,50 @@ collision = require "game/collision"
 love.keyboard.setKeyRepeat(true)
 
 function saveWorld(level,folder)
-    print(level,folder)
+    local player = level.entities[playerID]
+    local info = {
+        mapSize = level.mapSize,
+        player = {
+            x=player.x,y=player.y,cx=player.cx,cy=player.cy,
+            color = level.player.color --entityColor.getColor(level.entities[playerID].color)
+        },
+    }
+    local entities = {}
+    for k, v in pairs(level.entities) do
+        if (not k == playerID) and v.permanent then
+            table.insert(entities,v)
+        end
+    end
+    love.filesystem.write(folder.."entities",binser.serialize(entities))
+    love.filesystem.write(folder.."info.json",json.encode(info))
+
+    for _, v in ipairs(love.filesystem.getDirectoryItems("temp")) do
+        local ext = v:match("^.+%.(.+)$")
+        if not ext then
+            love.image.newImageData("temp/"..v):encode("png",folder..v..".png")
+        elseif ext == "bin" then
+            local file love.filesystem.read("temp/"..v)
+            file = binser:decode(file)
+            if decoded.data then
+                print("bah") -- todo
+            end
+        end
+    end
+    for cx, c in pairs(level.chunks) do
+        for cy, chunk in pairs(c) do
+
+            if level.chunks[cx][cy].modified then
+                level.chunks[cx][cy].map:encode("png",folder..cx.."_"..cy..".png")
+            end
+
+        end
+    end
+
 end
 
 
 return {
     load = function() 
-        --require "game/light"
-
         do
             if love.filesystem.getInfo("temp") then
                 for _, v in ipairs(love.filesystem.getDirectoryItems("temp")) do
@@ -40,8 +76,9 @@ return {
                 local mx,my = mx or love.mouse.getX(),my or love.mouse.getY()
                 local mox,moy = ((mx-ww/2)/cam.zoom-cam.x), ((my-wh/2)/cam.zoom-cam.y)
                 local mcx,mcy = math.floor(mox/level.mapSize-cam.cx), math.floor(moy/level.mapSize-cam.cy)
-                local mtx,mty = math.floor(mox%level.mapSize),math.floor(moy%level.mapSize)
-                return mcx,mcy,mtx,mty,mox,moy
+                local mutx,muty = mox%level.mapSize,moy%level.mapSize
+                local mtx,mty = math.floor(mutx),math.floor(muty)
+                return mcx,mcy,mtx,mty,mox,moy,mutx,muty
             end
         end
 
@@ -61,12 +98,12 @@ return {
             tilebyname = t[2]
         end
     
-        entityAtlas,imageEntityPallete,quadPallete = unpack(require "game/entities")
+        entityAtlas,entityColor = unpack(require "game/entities")
         entities = entities or {}
 
         level.activeChunks = 0
 
-        WHITETILE = {pixel.getColor(pixel.setProperty(pixel.setProperty(pixel.big(0,0,0,0),"color",1),"model",14))}
+        WHITETILE = {pixel.getColor(pixel.setProperty(pixel.setProperty(pixel.setProperty(pixel.big(0,0,0,0),"color",1),"model",15),"solid",1))}
         EMPTY = {pixel.getColor(pixel.big(0,0,0,0))}
         print(inspect(WHITETILE),WHITETILE[2]*255)
 
@@ -76,12 +113,10 @@ return {
 
         level.entities = {}
         level.entitiesInChunks = {}
-        for i = 1, 5 do
-            --utils.summonEntity("test",math.random(0,(level.mapSize-1)*1000)/1000,math.random(0,(level.mapSize-1)*1000)/1000,math.random(-3,3),math.random(-3,3))
-            utils.summonEntity("test2",i*1.3,190,0,-1)
-        end
 
-
+        playerID = utils.summonEntity("player",level.player.x,level.player.y,level.player.cx,level.player.cy)
+        level.entities[playerID].color = entityColor.addColor(level.player.color)
+        imageEntityPallete,quadPallete = entityColor.refresh()
     end,
     draw = function()
         love.graphics.push()
@@ -116,7 +151,7 @@ return {
                     for k, v in pairs(eic) do
                         local e = level.entities[k]
                         if not e.drawID then
-                            e.drawID = chunk.spriteBatch:add(quadPallete[entityAtlas[e.name].color],e.x,e.y,nil,.5)
+                            e.drawID = chunk.spriteBatch:add(quadPallete[e.color or entityAtlas[e.name].color],e.x,e.y,nil,.5)
                         end
                     end
                 end
@@ -161,18 +196,24 @@ return {
             "entities: "..#level.entities,
         },"\n"))
 
+        local a = (MODEL or 0)+0
+        for i = 0, 3 do
+            if a%2 == 1 then
+                love.graphics.rectangle("fill",50+20*(i%2),50+20*math.floor(i/2),20,20)
+            end
+            a = math.floor(a/2)
+            love.graphics.rectangle("line",50,50,40,40)
+        end
+
         for i = 1, 3 do
             clicked[i] = love.mouse.isDown(i)
         end
-
     end,
     update = function(dt)
         for i = 1, 3 do
             clicked[i] = love.mouse.isDown(i) and not clicked[i]
         end
-        for k, v in pairs(keyBinding) do
-            key[k] = love.keyboard.isDown(v) and math.min((key[k] or 0)+1,2)
-        end
+
         ww,wh = love.graphics.getDimensions()
 
         do
@@ -182,13 +223,16 @@ return {
         end
 
         
-        cam.x = cam.x+((key.left and 5 or 0)+(key.right and -5 or 0))*(key.sprint and 1 or dt)
-        cam.y = cam.y+((key.up and 5 or 0)+(key.down and -5 or 0))*(key.sprint and 1 or dt)
-        cam.x,cam.y,cam.cx,cam.cy = utils.fixCoords(cam.x,cam.y,cam.cx,cam.cy)
+        --[[cam.x = cam.x+((key.left and 5 or 0)+(key.right and -5 or 0))*(key.sprint and 1 or dt)
+        cam.y = cam.y+((key.up and 5 or 0)+(key.down and -5 or 0))*(key.sprint and 1 or dt)]]
+
 
         local now = (love.timer.getTime()-tickStart)*tps
-        if now>ticks then
-            local dt = math.ceil(now)-ticks
+        while now>ticks do
+            for k, v in pairs(keyBinding) do
+                key[k] = love.keyboard.isDown(v) and math.min((key[k] or 0)+1,2)
+            end
+            --local dt = math.ceil(now)-ticks
             for i,cx,cy in cam.eachVisibleChunk() do
                 if level.entitiesInChunks[cx] and level.entitiesInChunks[cx][cy] and level.chunks[cx] and level.chunks[cx][cy] then
                     local chunk = level.chunks[cx][cy]
@@ -198,22 +242,43 @@ return {
                         local entity = level.entities[k]
                         local template = entityAtlas[entity.name]
                         if template.update then
-                            template.update(level.entities[k],dt)
+                            template.update(level.entities[k])
                         end
                     end
                 end
             end
-            ticks = math.ceil(now)
+            ticks = ticks+1
         end
+
+        --[[do
+            local entity = level.entities[playerID]
+            local cx,cy,_,_,_,_,x,y = cam.screenPosToTilePos(ww/2,wh/2)
+            local dx,dy = x-entity.x+(cx-entity.cx)*level.mapSize,y-entity.y+(cy-entity.cy)*level.mapSize
+            cam.x = cam.x+dx*.5
+            cam.y = cam.y+dy*.5
+        end]]
+        do
+            local entity = level.entities[playerID]
+            cam.x,cam.y,cam.cx,cam.cy = -entity.x,-entity.y,-entity.cx,-entity.cy
+        end
+        cam.x,cam.y,cam.cx,cam.cy = utils.fixCoords(cam.x,cam.y,cam.cx,cam.cy)
 
         for i,cx,cy in cam.eachVisibleChunk() do -- load chunks
             utils.autoLoadChunk(cx,cy)
             utils.updateDrawableMap(cx,cy)
         end
         if not TEst then
+            local solid = {pixel.getColor(pixel.setProperty(pixel.setProperty(pixel.setProperty(pixel.big(0,0,0,0),"color",1),"model",15),"solid",1))}
             for i = 1, 10, 1 do
-                utils.placetile(i*2,198,0,-1,{pixel.getColor(pixel.setProperty(pixel.setProperty(pixel.setProperty(pixel.big(0,0,0,0),"color",1),"model",5+i),"solid",1))})
+                utils.placetile(i*2+2,198,0,-1,{pixel.getColor(pixel.setProperty(pixel.setProperty(pixel.setProperty(pixel.big(0,0,0,0),"color",1),"model",5+i),"solid",1))})
             end
+            utils.placetile(12,190,0,-1,solid)
+            utils.placetile(12,193,0,-1,solid)
+            utils.placetile(13,192,0,-1,solid)
+            utils.placetile(5,197,0,-1,solid)
+            utils.placetile(5,196,0,-1,solid)
+            utils.placetile(3,197,0,-1,solid)
+            utils.placetile(3,196,0,-1,solid)
             TEst = true
         end
         if clicked[1] then
@@ -224,9 +289,8 @@ return {
             local cx,cy,x,y = cam.screenPosToTilePos()
             utils.placetile(x,y,cx,cy,EMPTY)
         end
-        if level.activeChunks>=250 then -- unload chunks
-            coroutine.resume(utils.stepUnloading)
-        end
+
+        coroutine.resume(utils.stepUnloading)
     end,
     wheelmoved = function(x,y)
         if love.keyboard.isDown("lshift") then
@@ -236,13 +300,17 @@ return {
         end
         cam.zoom = cam.zoom+x
         cam.zoom = math.max(1,cam.zoom)
+        MODEL = MODEL or 15
+        MODEL = math.min(15,math.max(MODEL+y,0))
+        WHITETILE = {pixel.getColor(pixel.setProperty(pixel.setProperty(pixel.setProperty(pixel.big(0,0,0,0),"color",1),"model",MODEL),"solid",1))}
     end,
     keypressed = function(key)
         if key == "f2" then
             saveWorld(level,level.folder)
         end
-        if key == "f5" then
-
+        if key == "escape" then
+            parts.start("menu")
         end
+
     end
 }

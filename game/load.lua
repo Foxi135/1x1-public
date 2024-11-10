@@ -1,8 +1,7 @@
 
 function table.hasContent(table)
-    for k, v in pairs(table) do
-        return true
-    end
+    local a,b = pairs(table or {})
+    return a(b) or false
 end
 
 function math.halfFloor(x)

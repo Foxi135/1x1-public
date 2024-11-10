@@ -105,12 +105,14 @@ function utils.unloadChunk(cx,cy)
         if level.chunks[cx][cy].modified then
             level.chunks[cx][cy].map:encode("png",path)
         end
-    
-        love.filesystem.write(path..".bin",binser.serialize({
-            entities = level.chunks[cx][cy].entities
-        }))
+        local includeEntities-- = table.hasContent(level.chunks[cx][cy].entities)
+        if includeEntities then
+            love.filesystem.write(path..".bin",binser.serialize({
+                entities = level.chunks[cx][cy].entities
+            }))
+        end
     end
-
+    
     level.chunks[cx][cy].map:release()
     level.chunks[cx][cy].mapDraw:release()
     level.chunks[cx][cy] = nil
@@ -125,6 +127,7 @@ function utils.loadLevel(path)
     local info = json.decode(love.filesystem.read(level.folder.."info.json"))
 
     level.mapSize = info.mapSize
+    level.player = info.player
     level.chunks = {}
     
     renderShader:send("mapSize",level.mapSize*2)
@@ -166,13 +169,13 @@ utils.stepUnloading = coroutine.create(function()
         else
             for cx, c in pairs(level.chunks) do
                 for cy, chunk in pairs(c) do
+                    if level.activeChunks<101 then
+                        break
+                    end
                     if not utils.isVisible(cx,cy) then
                         utils.unloadChunk(cx,cy)
-                        if level.activeChunks<100 then
-                            break
-                        end
-                        coroutine.yield()
                     end
+                    coroutine.yield()
                 end
             end
         end

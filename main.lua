@@ -68,11 +68,13 @@ function love.run()
 		intro = require "intro",
 	}
 	function parts.start(p)
+		local lastLoaded;
 		if parts.loaded and parts.entries[parts.loaded].close then
 			parts.entries[parts.loaded].close()
+			lastLoaded = parts.loaded..""
 		end
 		parts.loaded = p
-		parts.entries[p].load()
+		parts.entries[p].load(lastLoaded)
 		scene = parts.entries[parts.loaded]
 	end
 

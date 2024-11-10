@@ -83,10 +83,10 @@ local function genBG()
 end
 
 
-
+local fromIntro;
 
 return {
-    load = function()
+    load = function(lastLoaded)
         ui = require "ui"
         if type(ui) == "boolean" then -- sometimes returned boolean.. huh?
             love.event.quit("restart")
@@ -127,21 +127,7 @@ return {
 
         cyclestart = love.timer.getTime()-cycleoffset
 
-        --[[do
-            local canvas = love.graphics.newCanvas(700,1)
-            love.graphics.setCanvas(canvas)
-            for i = 0, 700 do
-                local daynightcycle = i/700
-                local c1 = {.5*daynightcycle,.7*daynightcycle,daynightcycle*.9+.1}
-                local c2 = {1,.55,.25}
-                local a = math.cos(daynightcycle*math.pi)
-                local b = 1-math.max(0,(1-math.abs(a)-.5)*2)*.7
-                setColor((c1[1]-c2[1])*b+c2[1],(c1[2]-c2[2])*b+c2[2],(c1[3]-c2[3])*b+c2[3])
-                love.graphics.rectangle("fill",i,0,1,1)
-            end
-            love.graphics.setCanvas()
-            canvas:newImageData():encode("png","cycle.png")
-        end]]
+        fromIntro = lastLoaded == "intro"
 
         genBG()
     end,
@@ -170,7 +156,7 @@ return {
         for k, v in pairs(processed) do
             ui.draw(processed[k])
         end
-        if cover then
+        if cover and fromIntro then
             setColor(0,0,0,cover)
             love.graphics.rectangle("fill",0,0,love.graphics.getDimensions())
             setColor(1,1,1)
