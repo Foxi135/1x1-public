@@ -4,11 +4,9 @@ function buttonFuncs.openWorldView(hold)
     processed = {ui.process({gridw=10,gridh=13,size=40,cascade={button={padding=4,text_size=2,h=1},label={padding=4,text_size=2,h=1,align="center"}},align="center",
         {tag="label",label=hold.."",x=0,y=1,w=10},
         {tag="button",label="play",x=1,y=3,w=8,hold=hold.."",clicked=function(hold)
-            ui = nil
             menu = nil
             processed = nil
-            require("game/utilities").loadLevel(hold.."")
-            parts.start("game")
+            parts.start("game",hold.."")
             print(parts.loaded)
         end},
         {tag="button",label="delete",x=1,y=11,w=2},
@@ -86,12 +84,7 @@ end
 local fromIntro;
 
 return {
-    load = function(lastLoaded)
-        ui = require "ui"
-        if type(ui) == "boolean" then -- sometimes returned boolean.. huh?
-            love.event.quit("restart")
-        end
-        
+    load = function(lastLoaded)        
         menu = {
             main = {gridw=10,gridh=10,size=40,cascade={button={x=1,w=8,h=1,padding=4,text_size=2}},align="center",
                 {tag="button",label="worlds",y=6,clicked=buttonFuncs.openWoldSelect},
@@ -122,7 +115,6 @@ return {
                 {tag="input",label="hello",x=1,y=1,align="center",text_size=2,w=9,h=1,id="textinputtest",padding=5},
             }
         }
-
         processed = {ui.process(menu.main)}
 
         cyclestart = love.timer.getTime()-cycleoffset

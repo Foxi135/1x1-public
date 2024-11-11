@@ -1,9 +1,22 @@
+function clear(...)
+	local t = {...}
+	for i = 1, #t do
+		if type(t[i]) == "string" then
+			_G[t[i]] = nil
+		end
+	end
+end
 function love.run()
 	lovebird = require "lovebird"
 	inspect = require "inspect"
 	json = require "json"
 	binser = require "binser"
 	InputField = require "InputField"
+
+	ui = require "ui"
+	if type(ui) == "boolean" then -- sometimes returned boolean.. huh?
+		love.event.quit("restart")
+	end
 
 	if love.load then love.load(love.arg.parseGameArguments(arg), arg) end
 
@@ -67,22 +80,21 @@ function love.run()
 		menu = require "menu",
 		intro = require "intro",
 	}
-	function parts.start(p)
+	function parts.start(p,arg)
 		local lastLoaded;
 		if parts.loaded and parts.entries[parts.loaded].close then
 			parts.entries[parts.loaded].close()
 			lastLoaded = parts.loaded..""
 		end
 		parts.loaded = p
-		parts.entries[p].load(lastLoaded)
+		parts.entries[p].load(lastLoaded,arg)
 		scene = parts.entries[parts.loaded]
 	end
 
 
 	lovebird:init()
 
-	require("game.utilities").loadLevel("a")
-	parts.start("game")
+	parts.start("menu")
 
 	--[[love.filesystem.write("0_-1.bin",binser.serialize(
 		{
@@ -118,6 +130,8 @@ function love.run()
 
 			love.graphics.present()
 		end
+
+		if QUIT then return QUIT end
 
 		if love.timer then love.timer.sleep(0.001) end
 	end

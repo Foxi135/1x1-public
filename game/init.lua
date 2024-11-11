@@ -1,7 +1,4 @@
-utils = require "game/utilities"
-require "game/load"
-require "game/chunks"
-collision = require "game/collision"
+
 love.keyboard.setKeyRepeat(true)
 
 function saveWorld(level,folder)
@@ -29,7 +26,7 @@ function saveWorld(level,folder)
         elseif ext == "bin" then
             local file love.filesystem.read("temp/"..v)
             file = binser:decode(file)
-            if decoded.data then
+            if file.data then
                 print("bah") -- todo
             end
         end
@@ -46,78 +43,35 @@ function saveWorld(level,folder)
 
 end
 
+local funnypauseshader = love.graphics.newShader([[    
+    #pragma language glsl3
+    uniform ivec2 dimensions;
+
+    int slope = 5;
+
+    vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
+        vec4 p = Texel(tex, texture_coords);
+        ivec2 pos = ivec2(texture_coords*dimensions);
+        int i = (pos.x+(pos.y%slope))%slope;
+        if (i == 0) {
+            return vec4(0,0,0,0);
+        }
+        return p*vec4(0.5,0.5,0.5,1);
+    }
+]])
+
+local function drawPause(ww,wh)
+    local w,h = ww or love.graphics.getWidth(),wh or love.graphics.getHeight()
+    paused = love.graphics.newCanvas(w,h)
+    love.graphics.setCanvas(paused)
+    parts.entries.game.draw()
+    love.graphics.setCanvas()
+    funnypauseshader:send("dimensions",{w,h})
+end
+
 
 return {
-    load = function() 
-        do
-            if love.filesystem.getInfo("temp") then
-                for _, v in ipairs(love.filesystem.getDirectoryItems("temp")) do
-                    love.filesystem.remove("temp/"..v)
-                end
-            else
-                love.filesystem.createDirectory("temp")
-            end
-        end
-    
-        cam = {x=0,y=0,cx=0,cy=0,zoom=20,visibleChunks={}}
-        do
-            local function cam_visibleChunkIter(_,i)
-                local x,y = i%(cam.maxx-cam.minx+1)+cam.minx,math.floor(i/(cam.maxx-cam.minx+1))+cam.miny
-                if y>cam.maxy then return end
-                i=i+1
-                
-                return i,x,y
-            end
-            function cam.eachVisibleChunk()
-                return cam_visibleChunkIter, nil, 0
-            end
-
-            function cam.screenPosToTilePos(mx,my)
-                local mx,my = mx or love.mouse.getX(),my or love.mouse.getY()
-                local mox,moy = ((mx-ww/2)/cam.zoom-cam.x), ((my-wh/2)/cam.zoom-cam.y)
-                local mcx,mcy = math.floor(mox/level.mapSize-cam.cx), math.floor(moy/level.mapSize-cam.cy)
-                local mutx,muty = mox%level.mapSize,moy%level.mapSize
-                local mtx,mty = math.floor(mutx),math.floor(muty)
-                return mcx,mcy,mtx,mty,mox,moy,mutx,muty
-            end
-        end
-
-        
-        keyBinding = data.keyBinding
-        key = {}
-        clicked = {}
-
-        tps = 30
-        ticks = 0
-        tickStart = love.timer.getTime()
-    
-        tiles,tilebyname = nil,nil
-        do
-            local t = require "game/tiles"
-            tiles = t[1]
-            tilebyname = t[2]
-        end
-    
-        entityAtlas,entityColor = unpack(require "game/entities")
-        entities = entities or {}
-
-        level.activeChunks = 0
-
-        WHITETILE = {pixel.getColor(pixel.setProperty(pixel.setProperty(pixel.setProperty(pixel.big(0,0,0,0),"color",1),"model",15),"solid",1))}
-        EMPTY = {pixel.getColor(pixel.big(0,0,0,0))}
-        print(inspect(WHITETILE),WHITETILE[2]*255)
-
-        for i = 1, 3 do
-            clicked[i] = true
-        end
-
-        level.entities = {}
-        level.entitiesInChunks = {}
-
-        playerID = utils.summonEntity("player",level.player.x,level.player.y,level.player.cx,level.player.cy)
-        level.entities[playerID].color = entityColor.addColor(level.player.color)
-        imageEntityPallete,quadPallete = entityColor.refresh()
-    end,
+    load = require "game/load",
     draw = function()
         love.graphics.push()
         love.graphics.translate(cam.x*cam.zoom+math.floor(ww/2),cam.y*cam.zoom+math.floor(wh/2))
@@ -306,11 +260,75 @@ return {
     end,
     keypressed = function(key)
         if key == "f2" then
-            saveWorld(level,level.folder)
         end
         if key == "escape" then
-            parts.start("menu")
+            drawPause()
+            local template = {gridw=10,gridh=7,size=40,cascade={button={x=1,w=8,h=1,padding=4,text_size=2}},align="center",
+                {tag="button",label="resume",y=4,clicked=function()
+                    paused = nil
+                end},
+                {tag="button",label="save",y=5,clicked=function()
+                    if love.window.showMessageBox("surely?","Do you want to overwrite world at '"..level.folder.."'?",{"No","Yes"}) == 2 then
+                        saveWorld(level,level.folder)
+                        love.window.showMessageBox("done!","Your world at '"..level.folder.."' was saved!")
+                    end
+                end},
+                {tag="button",label="exit",y=6,clicked=function()
+                    print("a")
+                    if love.window.showMessageBox("surely?","Do want to exit?",{"No","Yes"}) == 2 then
+                        clear("paused","cam","level","clicked","pixel","ColorPallete","renderShader","getBits","utils","collision","keyBinding","key","clicked","tps","ticks","tickStart","tiles","tilebyname","entityAtlas","entityColor","entities","playerID","imageEntityPallete","quadPallete") -- amaezing :)
+                        parts.start("menu")
+                    end
+                end},
+                {tag="label",label="paused",x=0.12,y=0,text_size=10,w=10,h=3,align="center"}
+            }
+            local processed = ui.process(template)
+            while paused do
+                love.event.pump()
+                for name, a,b,c,d,e,f in love.event.poll() do
+                    if name == "quit" then
+                        if not love.quit or not love.quit() then
+                            QUIT = a or 0
+                            return
+                        end
+                    end
+                    if name == "keypressed" then
+                        if a == "escape" then
+                            paused = nil
+                            return
+                        end
+                    end
+                    if name == "resize" then
+                        drawPause(a,b)
+                    end
+                    if name == "mousepressed" then
+                        ui.mousepressed(processed,a,b,c,d)
+                    end
+                end
+
+                if tickStart then
+                    ticks = math.ceil((love.timer.getTime()-tickStart)*tps)
+                end
+
+                if not paused then return end
+
+
+                love.graphics.origin()
+                love.graphics.clear(love.graphics.getBackgroundColor())
+
+                love.graphics.setShader(funnypauseshader)
+                love.graphics.draw(paused)
+                love.graphics.setShader()
+                ui.draw(processed)
+                love.graphics.print("(frozen)")
+    
+                love.graphics.present()
+        
+                love.timer.sleep(1/20)
+            end
         end
 
+    end,
+    resize = function(ww,wh)
     end
 }
