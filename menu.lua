@@ -119,6 +119,7 @@ return {
 
         cyclestart = love.timer.getTime()-cycleoffset
 
+        print(lastLoaded)
         fromIntro = lastLoaded == "intro"
 
         genBG()

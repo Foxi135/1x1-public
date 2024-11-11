@@ -81,10 +81,9 @@ function love.run()
 		intro = require "intro",
 	}
 	function parts.start(p,arg)
-		local lastLoaded;
+		local lastLoaded = parts.loaded and parts.loaded..""
 		if parts.loaded and parts.entries[parts.loaded].close then
 			parts.entries[parts.loaded].close()
-			lastLoaded = parts.loaded..""
 		end
 		parts.loaded = p
 		parts.entries[p].load(lastLoaded,arg)
@@ -94,7 +93,7 @@ function love.run()
 
 	lovebird:init()
 
-	parts.start("menu")
+	parts.start("intro")
 
 	--[[love.filesystem.write("0_-1.bin",binser.serialize(
 		{
