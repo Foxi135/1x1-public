@@ -10,7 +10,8 @@ return {
         local catch = catch or {}
         for ox = xs, xe, .5 do
             for oy = ys, ye, .5 do
-                local fox,foy = floor(ox),floor(oy)
+                local fox,foy = floor(ox),floor(oy) 
+                --    fox :3
                 
                 local i = (fox-xs)+(foy-ys)*rx
                 local c = catch[i]

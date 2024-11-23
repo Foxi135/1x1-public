@@ -56,8 +56,8 @@ local manipulate = {
             while collision.isColliding(unpackPosition(entity,1,1,true)) do
                 entity.y = entity.y-d
             end
+            entity.canJump = entity.vy>=0 and love.timer.getTime() or -1
             entity.vy = 0
-            entity.canJump = love.timer.getTime()
         end
         entity.vy = entity.vy+entity.gravity
     end,
@@ -98,13 +98,12 @@ local entities = {
         summoned = function(entity,justLoad)
             entity.vx,entity.vy = 0,0
             entity.friction = 0.5
-            entity.maxspeedx,entity.maxspeedy = 10/tps,50/tps
+            entity.maxspeedx,entity.maxspeedy = 10/tps,100/tps
             entity.accx,entity.gravity = entity.maxspeedx*.5,0.07
         end,
         update = function(entity,dt)
             local a,b = entity.cx+0,entity.cy+0
             if key.up and (entity.canJump-love.timer.getTime())>-.2 then
-
                 do
                     local rx = hfloor(entity.x+.25) -- rounded x
                     local y = entity.y-1
@@ -162,8 +161,6 @@ local entities = {
             manipulate.physicsX(entity)
 
             manipulate.updatePos(entity,a,b)
-
-
         end
     },
 }

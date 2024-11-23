@@ -34,7 +34,8 @@ function love.run()
             esc = "escape",
             inventory = "e",
             console = "c",
-            snap = "0",
+            place = 1,
+            unplace = 2,
             save = "f5",
             appdata = "f6",
             slot1 = "1",
@@ -46,7 +47,9 @@ function love.run()
         }
 	}
 	
-	if not love.filesystem.getInfo("data.json") then
+	if love.filesystem.getInfo("data.json") then
+		--data = json.decode(love.filesystem.read("data.json"))
+	else
 		love.filesystem.write("data.json",json.encode(data))
 	end
 
@@ -86,6 +89,7 @@ function love.run()
 			parts.entries[parts.loaded].close()
 		end
 		parts.loaded = p
+
 		parts.entries[p].load(lastLoaded,arg)
 		scene = parts.entries[parts.loaded]
 	end
@@ -93,7 +97,7 @@ function love.run()
 
 	lovebird:init()
 
-	parts.start("intro")
+	parts.start("game","a")
 
 	--[[love.filesystem.write("0_-1.bin",binser.serialize(
 		{
@@ -114,6 +118,7 @@ function love.run()
 				end
 				love.handlers[name](a,b,c,d,e,f)
 				if scene[name] then scene[name](a,b,c,d,e,f) end
+				if scene.events then scene(name,a,b,c,d,e,f) end
 			end
 		end
 

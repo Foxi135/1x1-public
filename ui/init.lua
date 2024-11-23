@@ -300,10 +300,11 @@ ui.aligns = {
 }
 
 function ui.mousepressed(processed,x,y,button,presscount)
+
     if button ~= 1 or not processed.events.click then
         return
     end
-
+    
     local a,b = processed.translate(processed.w,processed.h,love.graphics.getWidth(),love.graphics.getHeight())
     local mx,my = x-a,y-b
     if not inBox(mx,my,0,0,processed.w,processed.h) then

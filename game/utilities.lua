@@ -189,7 +189,7 @@ function utils.autoLoadChunk(cx,cy)
     local try_png = "temp/"..cx.."_"..cy
     for i = 1, 2 do
         if love.filesystem.getInfo(try_png) then
-        print("FROM FILE")
+            print("FROM FILE",cx,cy)
             utils.loadChunkFromFile(cx,cy,try_png)
             try_png = nil
         end
@@ -199,7 +199,7 @@ function utils.autoLoadChunk(cx,cy)
     end
 
     if try_png then
-        print("GENERATE")
+        print("GENERATE",cx,cy)
         utils.generateChunk(cx,cy)
     end
 end
@@ -253,5 +253,30 @@ function utils.summonEntity(name,x,y,cx,cy, signal)
     return i
 end
 
+function utils.encodePosition(x,y,cx,cy)
+    return (x+y*level.mapSize) .."_"..cx.."_"..cy
+end
+
+local ignoreKeys = {}
+
+function utils.ignoreFirstInputs(keys)
+    ignoreKeys = keys
+end
+
+function utils.updateKeys(keyBinding,key)
+    for k, v in pairs(keyBinding) do
+        local condition;
+        if string.find(v,"gamepad") then
+            -- placeholder
+        elseif v..""~=v then
+            condition = love.mouse.isDown(v)
+        else
+            condition = love.keyboard.isDown(v)
+        end
+        ignoreKeys[k] = (ignoreKeys[k] and condition) or nil
+        condition = condition and not ignoreKeys[k]
+        key[k] = condition and math.min((key[k] or 0)+1,2)
+    end
+end
 
 return utils

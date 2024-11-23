@@ -102,6 +102,7 @@ return function(last,arg)
     utils = require "game/utilities"
     require "game/chunks"
     collision = require "game/collision"
+    popup = require "game/popups"
     
     utils.loadLevel(arg)
     
@@ -173,4 +174,23 @@ return function(last,arg)
     playerID = utils.summonEntity("player",level.player.x,level.player.y,level.player.cx,level.player.cy)
     level.entities[playerID].color = entityColor.addColor(level.player.color)
     imageEntityPallete,quadPallete = entityColor.refresh()
+    do
+        local entity = level.entities[playerID]
+        cam.x,cam.y,cam.cx,cam.cy = -entity.x,-entity.y,-entity.cx,-entity.cy
+    end
+
+    local a = {}
+    utils.updateKeys(data.keyBinding,a)
+    utils.ignoreFirstInputs(a)
+
+
+
+    -- TEMPORARY
+
+    local entity = level.entities[playerID]
+    entity.content = {
+        {type = "item", id = "testitem", amount = 50},
+        {type = "tile", id = "wall", amount = 50},
+    }
 end
+

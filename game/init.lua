@@ -54,17 +54,27 @@ local funnypauseshader = love.graphics.newShader([[
         ivec2 pos = ivec2(texture_coords*dimensions);
         int i = (pos.x+(pos.y%slope))%slope;
         if (i == 0) {
-            return vec4(0,0,0,0);
+            return vec4(0,0,0,1);
         }
         return p*vec4(0.5,0.5,0.5,1);
     }
 ]])
+local cover;
+local function updatecover(ww,wh)
+    local w,h = ww or love.graphics.getWidth(),wh or love.graphics.getHeight()
+    cover = love.graphics.newCanvas(w,h)
+    funnypauseshader:send("dimensions",{w,h})
+end
+updatecover()
 
 local function drawPause(ww,wh)
     local w,h = ww or love.graphics.getWidth(),wh or love.graphics.getHeight()
     paused = love.graphics.newCanvas(w,h)
     love.graphics.setCanvas(paused)
     parts.entries.game.draw()
+    love.graphics.draw(cover)
+    setColor(0,0,0,.5)
+    love.graphics.rectangle("fill",0,0,w,h)
     love.graphics.setCanvas()
     funnypauseshader:send("dimensions",{w,h})
 end
@@ -144,30 +154,23 @@ return {
 
         love.graphics.pop()
 
+        if popup.acitve then
+            love.graphics.setShader(funnypauseshader)
+            setColor(0,0,0,0)
+            love.graphics.draw(cover)
+            love.graphics.setShader()
+            popup.draw()
+        end
+
+
         love.graphics.print(table.concat({
             "active chunks: "..level.activeChunks,
             "fps: "..love.timer.getFPS(),
             "entities: "..#level.entities,
         },"\n"))
 
-        local a = (MODEL or 0)+0
-        for i = 0, 3 do
-            if a%2 == 1 then
-                love.graphics.rectangle("fill",50+20*(i%2),50+20*math.floor(i/2),20,20)
-            end
-            a = math.floor(a/2)
-            love.graphics.rectangle("line",50,50,40,40)
-        end
-
-        for i = 1, 3 do
-            clicked[i] = love.mouse.isDown(i)
-        end
     end,
     update = function(dt)
-        for i = 1, 3 do
-            clicked[i] = love.mouse.isDown(i) and not clicked[i]
-        end
-
         ww,wh = love.graphics.getDimensions()
 
         do
@@ -176,16 +179,11 @@ return {
             cam.maxx,cam.maxy = math.floor((a-cam.x)/level.mapSize-cam.cx), math.floor((b-cam.y)/level.mapSize-cam.cy)
         end
 
-        
-        --[[cam.x = cam.x+((key.left and 5 or 0)+(key.right and -5 or 0))*(key.sprint and 1 or dt)
-        cam.y = cam.y+((key.up and 5 or 0)+(key.down and -5 or 0))*(key.sprint and 1 or dt)]]
-
-
         local now = (love.timer.getTime()-tickStart)*tps
         while now>ticks do
-            for k, v in pairs(keyBinding) do
-                key[k] = love.keyboard.isDown(v) and math.min((key[k] or 0)+1,2)
-            end
+            utils.updateKeys(keyBinding,key)
+            if popup.active then key={} end
+
             --local dt = math.ceil(now)-ticks
             for i,cx,cy in cam.eachVisibleChunk() do
                 if level.entitiesInChunks[cx] and level.entitiesInChunks[cx][cy] and level.chunks[cx] and level.chunks[cx][cy] then
@@ -201,16 +199,21 @@ return {
                     end
                 end
             end
+
             ticks = ticks+1
         end
+        if key.place or key.unplace then
+            placed = placed or {}
+            local cx,cy,x,y = cam.screenPosToTilePos()
+            local poscode = utils.encodePosition(x,y,cx,cy)
+            if not placed[poscode] then
+                utils.placetile(x,y,cx,cy,(key.place and WHITETILE) or {0,0,0,0})
+                placed[poscode] = true
+            end
+        else
+            placed = nil
+        end
 
-        --[[do
-            local entity = level.entities[playerID]
-            local cx,cy,_,_,_,_,x,y = cam.screenPosToTilePos(ww/2,wh/2)
-            local dx,dy = x-entity.x+(cx-entity.cx)*level.mapSize,y-entity.y+(cy-entity.cy)*level.mapSize
-            cam.x = cam.x+dx*.5
-            cam.y = cam.y+dy*.5
-        end]]
         do
             local entity = level.entities[playerID]
             cam.x,cam.y,cam.cx,cam.cy = -entity.x,-entity.y,-entity.cx,-entity.cy
@@ -221,32 +224,12 @@ return {
             utils.autoLoadChunk(cx,cy)
             utils.updateDrawableMap(cx,cy)
         end
-        if not TEst then
-            local solid = {pixel.getColor(pixel.setProperty(pixel.setProperty(pixel.setProperty(pixel.big(0,0,0,0),"color",1),"model",15),"solid",1))}
-            for i = 1, 10, 1 do
-                utils.placetile(i*2+2,198,0,-1,{pixel.getColor(pixel.setProperty(pixel.setProperty(pixel.setProperty(pixel.big(0,0,0,0),"color",1),"model",5+i),"solid",1))})
-            end
-            utils.placetile(12,190,0,-1,solid)
-            utils.placetile(12,193,0,-1,solid)
-            utils.placetile(13,192,0,-1,solid)
-            utils.placetile(5,197,0,-1,solid)
-            utils.placetile(5,196,0,-1,solid)
-            utils.placetile(3,197,0,-1,solid)
-            utils.placetile(3,196,0,-1,solid)
-            TEst = true
-        end
-        if clicked[1] then
-            local cx,cy,x,y = cam.screenPosToTilePos()
-            utils.placetile(x,y,cx,cy,WHITETILE)
-        end
-        if clicked[2] then
-            local cx,cy,x,y = cam.screenPosToTilePos()
-            utils.placetile(x,y,cx,cy,EMPTY)
-        end
 
         coroutine.resume(utils.stepUnloading)
     end,
     wheelmoved = function(x,y)
+        if popup.active then return end
+
         if love.keyboard.isDown("lshift") then
             local h = y+0
             y = x+0
@@ -254,11 +237,10 @@ return {
         end
         cam.zoom = cam.zoom+x
         cam.zoom = math.max(1,cam.zoom)
-        MODEL = MODEL or 15
-        MODEL = math.min(15,math.max(MODEL+y,0))
-        WHITETILE = {pixel.getColor(pixel.setProperty(pixel.setProperty(pixel.setProperty(pixel.big(0,0,0,0),"color",1),"model",MODEL),"solid",1))}
     end,
     keypressed = function(key)
+        if popup.active then return end
+
         if key == "f2" then
         end
         if key == "escape" then
@@ -299,6 +281,7 @@ return {
                         end
                     end
                     if name == "resize" then
+                        updatecover()
                         drawPause(a,b)
                     end
                     if name == "mousepressed" then
@@ -310,15 +293,14 @@ return {
                     ticks = math.ceil((love.timer.getTime()-tickStart)*tps)
                 end
 
-                if not paused then return end
+                if not paused then break end
 
 
                 love.graphics.origin()
+                setColor(1,1,1)
                 love.graphics.clear(love.graphics.getBackgroundColor())
 
-                love.graphics.setShader(funnypauseshader)
                 love.graphics.draw(paused)
-                love.graphics.setShader()
                 ui.draw(processed)
                 love.graphics.print("(frozen)")
     
@@ -326,9 +308,12 @@ return {
         
                 love.timer.sleep(1/20)
             end
+            while (parts.loaded == "game") and (love.event.pump() or love.mouse.isDown(1)) do end
         end
 
     end,
     resize = function(ww,wh)
-    end
+        updatecover(ww,wh)
+    end,
+    event = function(...) popup.event(...) end
 }
