@@ -154,7 +154,8 @@ return {
 
         love.graphics.pop()
 
-        if popup.acitve then
+        
+        if popup.active then
             love.graphics.setShader(funnypauseshader)
             setColor(0,0,0,0)
             love.graphics.draw(cover)
@@ -181,8 +182,16 @@ return {
 
         local now = (love.timer.getTime()-tickStart)*tps
         while now>ticks do
-            utils.updateKeys(keyBinding,key)
-            if popup.active then key={} end
+            if popup.active then 
+                key={}
+                popup.key = popup.key or {}
+                utils.updateKeys(keyBinding,popup.key)
+            else
+                utils.updateKeys(keyBinding,key)
+            end
+            if key.inventory then
+                popup.evoke("inventory")
+            end
 
             --local dt = math.ceil(now)-ticks
             for i,cx,cy in cam.eachVisibleChunk() do
@@ -213,18 +222,18 @@ return {
         else
             placed = nil
         end
-
+        
         do
             local entity = level.entities[playerID]
             cam.x,cam.y,cam.cx,cam.cy = -entity.x,-entity.y,-entity.cx,-entity.cy
         end
         cam.x,cam.y,cam.cx,cam.cy = utils.fixCoords(cam.x,cam.y,cam.cx,cam.cy)
-
+        
         for i,cx,cy in cam.eachVisibleChunk() do -- load chunks
             utils.autoLoadChunk(cx,cy)
             utils.updateDrawableMap(cx,cy)
         end
-
+        
         coroutine.resume(utils.stepUnloading)
     end,
     wheelmoved = function(x,y)
@@ -239,11 +248,14 @@ return {
         cam.zoom = math.max(1,cam.zoom)
     end,
     keypressed = function(key)
-        if popup.active then return end
-
+        
         if key == "f2" then
         end
         if key == "escape" then
+            if popup.active then
+                popup.close()
+                return
+            end
             drawPause()
             local template = {gridw=10,gridh=7,size=40,cascade={button={x=1,w=8,h=1,padding=4,text_size=2}},align="center",
                 {tag="button",label="resume",y=4,clicked=function()

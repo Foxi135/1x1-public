@@ -37,17 +37,21 @@ function ui.draw(processed)
     local mx,my = love.mouse.getPosition()
     local alreadyHovered
     love.graphics.push()
-
     local tx,ty = processed.translate(processed.w,processed.h,love.graphics.getWidth(),love.graphics.getHeight())
+
+    setColor(1,0,0)
+    love.graphics.rectangle("line",tx,ty,processed.w,processed.h)
+
     if processed.hideOverflow then
         love.graphics.setScissor(tx,ty,processed.w,processed.h)
     end
+
     local scrollX,scrollY = processed.scrollX or 0, processed.scrollY or 0
     if scrollX~=0 then
         error("X SCROLL IS NOT SUPPORTED!")
     end
     local translateX,translateY = tx-scrollX,ty-scrollY
-    love.graphics.translate(translateX,translateY)
+    love.graphics.translate(math.floor(translateX),math.floor(translateY))
     mx,my = mx-tx+scrollX,my-ty+scrollY
 
     local entireBox
@@ -69,7 +73,7 @@ function ui.draw(processed)
                     x,y,w,h = unpack(v[2])
                 end
                 if inBox(mx,my,x,y,w,h) then
-                    hover = true
+                    hover = {mx,my}
                     alreadyHovered = v.event
                 end
             end
@@ -93,7 +97,7 @@ function ui.draw(processed)
                 local hover;
                 if v.hover and not alreadyHovered then
                     if inBox(mx,my,x,y,w,h) then
-                        hover = true
+                        hover = {mx,my}
                         alreadyHovered = v.event
                     end
                 end
@@ -127,15 +131,67 @@ function ui.draw(processed)
 end
 ui.drawElements = {
     button = function(static,dynamic,hover)
-        local x,y,w,h,label,fontscale,o = unpack(static)
-        setColor(0,0,0,.2)
+        local x,y,w,h,label,fontscale,o,textoffx,color,hovercolor,linewidth = unpack(static)
+        setColor(color)
         if hover then
-            setColor(1,1,1,.2)
+            setColor(hovercolor)
         end
         love.graphics.rectangle("fill",x,y,w,h)
         setColor(1,1,1)
+        if linewidth ~= 0 then            
+            love.graphics.setLineWidth(linewidth)
+            love.graphics.rectangle("line",x,y,w,h)
+            love.graphics.setLineWidth(1)
+        end
+        love.graphics.print(label,x+(w-font:getWidth(label)*fontscale)/2+textoffx,y+o,nil,fontscale)
+    end,
+    itemslot = function(static,dynamic,hover)
+        local x,y,w,h,_,fontscale,_,hh,labelpadding = unpack(static)
+        local tile = dynamic.tile
+
+        local label = " "..(dynamic.tile and dynamic.tile.label or "").." "
+        local hw = font:getWidth(label)*fontscale+labelpadding*2
+
+        if tile then
+            if tile.model then
+                setColor(tile.color)
+                local bw,bh = w/2-1,h/2-1
+                local bx,by = x+1,y+1
+                for i = 0, 3 do
+                    if tile.model[i+1] then
+                        local fx,fy = bx+(i%2)*bw,by+math.floor(i/2)*bh
+                        love.graphics.rectangle("fill",fx,fy,bw,bh)
+                    end
+                end
+            end
+            if tonumber(tile.count) and tile.count~=1 then
+                --local fontscale = 1
+                local cw = font:getWidth(tile.count or 1)+labelpadding*2
+                local ox,oy = (w-cw)/2,(h-fh)/2
+                local fx,fy = x+labelpadding+ox,y+labelpadding+oy
+                local p = 2
+                setColor(0,0,0,0.75)
+                love.graphics.rectangle("fill",fx,fy,cw-1,fh-2)
+                setColor(1,1,1)
+                love.graphics.print(tile.count,fx,fy)
+            end 
+        end
+        
+        
+        setColor(1,1,1)
         love.graphics.rectangle("line",x,y,w,h)
-        love.graphics.print(label,x+(w-font:getWidth(label)*fontscale)/2,y+o,nil,fontscale)
+        
+        if hover then
+            setColor(1,1,1,.2)
+            love.graphics.rectangle("fill",x,y,w,h)
+            if label and #label>2 then
+                setColor(0,0,0)
+                love.graphics.rectangle("fill",x,y,-hw,hh)
+                setColor(1,1,1)
+                love.graphics.print(label,x+labelpadding-hw,y+labelpadding,nil,fontscale)
+            end
+        end
+
     end,
     img = function(static,dynamic)
         local x,y,w,h,img = unpack(static)
@@ -204,6 +260,78 @@ ui.boxes = {
     end
 }
 ui.elements = {
+    itemslot = function(e,size)
+        local padding = e.padding or 0
+        local fontscale = (e.text_size or 1)+0
+        local label = " "..(e.label or "").." "
+        local labelpadding = e.labelpadding or e.padding or 0
+        local x,y,w,h = e.x*size+padding,
+                        e.y*size+padding,
+                        e.w*size-padding*2,
+                        e.h*size-padding*2
+        
+        local hoverheight = fh*fontscale+labelpadding*2
+
+
+        return {
+            "itemslot",
+            {x,y,w,h,label.."",fontscale,nil,hoverheight,labelpadding},
+            dynamic = {tile=e.tile},
+            e.id,
+            hover = true
+        },{
+            click = function(hold,dyn,button)
+                if popup.key.sprint then
+                    local a = incursor
+                    incursor = dyn.tile
+                    dyn.tile = a
+                    return
+                end
+                if incursor then
+                    if not dyn.tile then
+                        dyn.tile = incursor
+                        incursor = nil
+                        return
+                    end
+                    print(dyn.tile)
+                    local match = true
+                    if incursor.model then
+                        for i = 1,3 do
+                            if dyn.tile.color[i] ~= incursor.color[i] then
+                                match = false
+                            end
+                        end
+                        for i = 1,4 do
+                            if dyn.tile.model[i] ~= incursor.model[i] then
+                                match = false
+                            end
+                        end
+                        if dyn.tile.label ~= incursor.label then
+                            match = false
+                        end
+                    end
+
+                    if match then
+                        incursor.count = incursor.count+1
+                        dyn.tile.count = dyn.tile.count-1
+                    else
+                        local a = incursor
+                        incursor = dyn.tile
+                        dyn.tile = a
+                    end
+                elseif not incursor then
+                    incursor = {color=dyn.tile.color,model=dyn.tile.model,count=1,label=dyn.tile.label}
+                    dyn.tile.count = dyn.tile.count-1
+                end
+                if dyn.tile.count < 1 then
+                    dyn.tile = nil
+                end
+
+            end,
+            box = {x,y,w,h},
+            hold = e.hold
+        }
+    end,
     button = function(e,size)
         local fontscale = (e.text_size or 1)+0
         local padding = e.padding or 0
@@ -214,9 +342,9 @@ ui.elements = {
 
         local o = (h-fh*fontscale)/2
         return {
-                "button",
-                {x,y,w,h,e.label.."",fontscale,o},
-                hover = true
+            "button",
+            {x,y,w,h,e.label.."",fontscale,o,e.textoffx or 0,e.color or {0,0,0,.2},e.hovercolor or {1,1,1,.2},e.linewidth or 1},
+            hover = true,
         },e.clicked and {
             click = e.clicked,
             box = {x,y,w,h},

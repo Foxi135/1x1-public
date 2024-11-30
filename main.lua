@@ -118,7 +118,7 @@ function love.run()
 				end
 				love.handlers[name](a,b,c,d,e,f)
 				if scene[name] then scene[name](a,b,c,d,e,f) end
-				if scene.events then scene(name,a,b,c,d,e,f) end
+				if scene.event then scene.event(name,a,b,c,d,e,f) end
 			end
 		end
 
