@@ -128,6 +128,7 @@ function utils.loadLevel(path)
 
     level.mapSize = info.mapSize
     level.player = info.player
+    level.stackLimit = info.stackLimit
     level.chunks = {}
     
     renderShader:send("mapSize",level.mapSize*2)

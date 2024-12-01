@@ -171,7 +171,7 @@ ui.drawElements = {
                 local fx,fy = x+labelpadding+ox,y+labelpadding+oy
                 local p = 2
                 setColor(0,0,0,0.75)
-                love.graphics.rectangle("fill",fx,fy,cw-1,fh-2)
+                love.graphics.rectangle("fill",fx-1,fy,cw-1,fh-2)
                 setColor(1,1,1)
                 love.graphics.print(tile.count,fx,fy)
             end 
@@ -280,53 +280,50 @@ ui.elements = {
             e.id,
             hover = true
         },{
-            click = function(hold,dyn,button)
-                if popup.key.sprint then
+            click = function(hold,dyn,_,_,button)
+                if (not incursor) and (not dyn.tile) then
+                    return
+                end
+
+                dyn.tile = dyn.tile or {label=incursor.label,color=incursor.color,model=incursor.model,count=0, code=incursor.code}
+                incursor = incursor or {label=dyn.tile.label,color=dyn.tile.color,model=dyn.tile.model,count=0, code=dyn.tile.code}
+
+                local match = incursor.type == dyn.tile.type and incursor.code == dyn.tile.code
+
+                if button == 2 and match and incursor.count>0 then
+                    incursor.count = incursor.count-1
+                    dyn.tile.count = dyn.tile.count+1
+                    if popup.key.sprint then
+                        dyn.tile.count = dyn.tile.count+incursor.count
+                        incursor.count = 0
+                    end
+                    if dyn.tile.count>level.stackLimit then
+                        incursor.count = dyn.tile.count%level.stackLimit
+                        dyn.tile.count = dyn.tile.count-incursor.count
+                    end
+                elseif match and dyn.tile.count>0 then
+                    incursor.count = incursor.count+1
+                    dyn.tile.count = dyn.tile.count-1
+                    if popup.key.sprint then
+                        incursor.count = incursor.count+dyn.tile.count
+                        dyn.tile.count = 0
+                    end
+                    if incursor.count>level.stackLimit then
+                        dyn.tile.count = incursor.count%level.stackLimit
+                        incursor.count = incursor.count-dyn.tile.count
+                    end
+                else
                     local a = incursor
                     incursor = dyn.tile
                     dyn.tile = a
-                    return
                 end
-                if incursor then
-                    if not dyn.tile then
-                        dyn.tile = incursor
-                        incursor = nil
-                        return
-                    end
-                    print(dyn.tile)
-                    local match = true
-                    if incursor.model then
-                        for i = 1,3 do
-                            if dyn.tile.color[i] ~= incursor.color[i] then
-                                match = false
-                            end
-                        end
-                        for i = 1,4 do
-                            if dyn.tile.model[i] ~= incursor.model[i] then
-                                match = false
-                            end
-                        end
-                        if dyn.tile.label ~= incursor.label then
-                            match = false
-                        end
-                    end
 
-                    if match then
-                        incursor.count = incursor.count+1
-                        dyn.tile.count = dyn.tile.count-1
-                    else
-                        local a = incursor
-                        incursor = dyn.tile
-                        dyn.tile = a
-                    end
-                elseif not incursor then
-                    incursor = {color=dyn.tile.color,model=dyn.tile.model,count=1,label=dyn.tile.label}
-                    dyn.tile.count = dyn.tile.count-1
-                end
-                if dyn.tile.count < 1 then
+                if dyn.tile and dyn.tile.count < 1 then
                     dyn.tile = nil
                 end
-
+                if incursor.count < 1 then
+                    incursor = nil
+                end
             end,
             box = {x,y,w,h},
             hold = e.hold
@@ -429,7 +426,7 @@ ui.aligns = {
 
 function ui.mousepressed(processed,x,y,button,presscount)
 
-    if button ~= 1 or not processed.events.click then
+    if not processed.events.click then
         return
     end
     
@@ -464,7 +461,7 @@ function ui.mousepressed(processed,x,y,button,presscount)
 end
 
 function ui.mousereleased(processed,x,y,button)
-    if button ~= 1 or not processed.events.mousereleased then
+    if not processed.events.mousereleased then
         return
     end
 

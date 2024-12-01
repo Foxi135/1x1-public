@@ -190,7 +190,11 @@ return {
                 utils.updateKeys(keyBinding,key)
             end
             if key.inventory then
-                popup.evoke("inventory")
+                local playerinv = level.entities[playerID].content
+                popup.evoke("inventory",{
+                    playerinv,
+                    popup.entries.inventory.creative
+                })
             end
 
             --local dt = math.ceil(now)-ticks

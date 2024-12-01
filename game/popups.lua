@@ -4,18 +4,38 @@ incursor = nil;
 local inventoryColumns = 5
 popup.entries = {
     inventory = {
+        creative = {},
         start = function(data)
             local A = {gridw=10,gridh=10,size=40,cascade={itemslot={x=1,w=1,h=1,padding=4,labelpadding=1,text_size=1,textoffx=1}},align="center"}
             
-            for x=1,4 do
-                for y=1,8 do
-                    if y == 1 then
-                        table.insert(A,{tag="itemslot",tile={model={
-                            math.random(0,1)==0,math.random(0,1)==0,math.random(0,1)==0,math.random(0,1)==0
-                        },color={1,0,1},count=2,label="test item"},id="inv"..x..y,x=x,y=y-1})
-                    else
-                        table.insert(A,{tag="itemslot",id="inv"..x..y,x=x,y=y})
-                    end
+            local left = {}
+            for k,v in ipairs(data[1]) do
+                if v.type == "tile" then
+                    local tilecolor = pixel.getProperty(v.code,"color")+1
+                    tilecolor = {
+                        ColorPallete[tilecolor][1]+0,
+                        ColorPallete[tilecolor][2]+0,
+                        ColorPallete[tilecolor][3]+0,
+                    }
+                    print(inspect(tilecolor))
+                    local tilemodel = pixel.getProperty(v.code,"model")
+                    tilemodel = {
+                        getBits(tilemodel,0,1) == 1,
+                        getBits(tilemodel,1,1) == 1,
+                        getBits(tilemodel,2,1) == 1,
+                        getBits(tilemodel,3,1) == 1,
+                    }
+                    left[v.invpos] = {label=tiles[v.id].name.."",count=v.amount+0,color=tilecolor,model=tilemodel,code=v.code+0}
+                end
+            end
+
+            local i = 0
+            for y=1,8 do
+                for x=1,4 do
+                    i = i+1
+                    local slot = {tag="itemslot",id="inv"..x..y,x=x,y=y-math.floor(1/y),tile=left[i]}
+
+                    table.insert(A,slot)
                 end
             end
 

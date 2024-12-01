@@ -189,8 +189,8 @@ return function(last,arg)
 
     local entity = level.entities[playerID]
     entity.content = {
-        {type = "item", id = "testitem", amount = 50},
-        {type = "tile", id = "wall", amount = 50},
+        {type = "item", id = "testitem", amount = 50, invpos=7},
+        {type = "tile", id = 1, amount = 50, invpos=5, code = pixel.setProperty(pixel.setProperty(pixel.setProperty(pixel.big(0,0,0,0),"color",1),"model",15),"solid",1)},
     }
 end
 
