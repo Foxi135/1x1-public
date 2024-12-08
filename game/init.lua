@@ -154,6 +154,53 @@ return {
 
         love.graphics.pop()
 
+        local slotSize = 40
+        local slotPadding = 4
+        local w = slotSize-slotPadding*2
+        love.graphics.push()
+        love.graphics.translate(ww/2-slotSize*2,wh-slotSize-1)
+
+        local items = {}
+        for k, item in pairs(level.entities[playerID].content) do
+            if item then
+                if item.invpos>4 then
+                    break
+                else
+                    items[item.invpos] = item
+                    if #item>=4 then
+                        break
+                    end
+                end
+            end
+        end
+
+        local inHand = level.entities[playerID].inHand+0
+
+        for i = 1, 4 do
+            local x = (i-1)*slotSize
+            setColor(0,0,0,.9)
+            love.graphics.rectangle("fill",x,0,slotSize,slotSize)
+            local item = items[i]
+            if item and item.type=="tile" then
+                item.color = item.color or pixel.getProperty(item.code,"color")
+                setColor(ColorPallete[item.color+1])
+                for i = 0, 3 do
+                    love.graphics.rectangle("fill",x+slotPadding+w*(i%2)/2,slotPadding+w*math.floor(i/2)/2,w/2,w/2)
+                end
+            end
+            if item and item.amount~=1 then
+                local tp = 2
+                setColor(0,0,0,.75)
+                love.graphics.rectangle("fill",x+slotPadding,slotPadding,font:getWidth(item.amount or "nil")+tp*2-1,fh-2)
+                setColor(1,1,1)
+                love.graphics.print(item.amount or "nil",x+slotPadding+tp,slotPadding)
+
+            end
+        end
+        setColor(1,1,1)
+        love.graphics.rectangle("line",(inHand-1)*slotSize,0,slotSize,slotSize)
+
+        love.graphics.pop()
         
         if popup.active then
             love.graphics.setShader(funnypauseshader)
@@ -250,6 +297,8 @@ return {
         end
         cam.zoom = cam.zoom+x
         cam.zoom = math.max(1,cam.zoom)
+
+        level.entities[playerID].inHand = (level.entities[playerID].inHand-1+y)%4+1
     end,
     keypressed = function(key)
         

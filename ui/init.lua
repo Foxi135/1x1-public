@@ -151,6 +151,9 @@ ui.drawElements = {
 
         local label = " "..(dynamic.tile and dynamic.tile.label or "").." "
         local hw = font:getWidth(label)*fontscale+labelpadding*2
+        
+        setColor(1,1,1)
+        love.graphics.rectangle("line",x,y,w,h)
 
         if tile then
             if tile.model then
@@ -165,21 +168,16 @@ ui.drawElements = {
                 end
             end
             if tonumber(tile.count) and tile.count~=1 then
-                --local fontscale = 1
-                local cw = font:getWidth(tile.count or 1)+labelpadding*2
-                local ox,oy = (w-cw)/2,(h-fh)/2
-                local fx,fy = x+labelpadding+ox,y+labelpadding+oy
-                local p = 2
+                local rx,ry = x+labelpadding,y+labelpadding
+
+                local cw = font:getWidth(tile.count or 1)
                 setColor(0,0,0,0.75)
-                love.graphics.rectangle("fill",fx-1,fy,cw-1,fh-2)
+                love.graphics.rectangle("fill",rx,ry,cw+labelpadding*2-1,fh-2)
                 setColor(1,1,1)
-                love.graphics.print(tile.count,fx,fy)
+                love.graphics.print(tile.count,rx+labelpadding,ry)
+
             end 
         end
-        
-        
-        setColor(1,1,1)
-        love.graphics.rectangle("line",x,y,w,h)
         
         if hover then
             setColor(1,1,1,.2)
@@ -284,46 +282,55 @@ ui.elements = {
                 if (not incursor) and (not dyn.tile) then
                     return
                 end
+                if button == 3 then return end
 
                 dyn.tile = dyn.tile or {label=incursor.label,color=incursor.color,model=incursor.model,count=0, code=incursor.code}
                 incursor = incursor or {label=dyn.tile.label,color=dyn.tile.color,model=dyn.tile.model,count=0, code=dyn.tile.code}
 
                 local match = incursor.type == dyn.tile.type and incursor.code == dyn.tile.code
 
-                if button == 2 and match and incursor.count>0 then
-                    incursor.count = incursor.count-1
-                    dyn.tile.count = dyn.tile.count+1
-                    if popup.key.sprint then
-                        dyn.tile.count = dyn.tile.count+incursor.count
-                        incursor.count = 0
+                do
+                    local left, right; -- puts items from the left side to right
+
+                    if button == 1 then
+                        left,right = incursor.count+0, dyn.tile.count+0
+                    else
+                        left,right = dyn.tile.count+0, incursor.count+0
                     end
-                    if dyn.tile.count>level.stackLimit then
-                        incursor.count = dyn.tile.count%level.stackLimit
-                        dyn.tile.count = dyn.tile.count-incursor.count
+
+                    if match and left>0 then
+                        right = right+1
+                        if left == 1/0 then
+                            if popup.key.sprint then
+                                right = level.stackLimit+0
+                            end
+                        else
+                            left = left-1
+                            if popup.key.sprint then
+                                right = right+left
+                                left = 0
+                            end
+                        end
+                        if right>level.stackLimit then
+                            local b = right-level.stackLimit
+                            right = right-b
+                            left = left+b
+                        end
+                    elseif xor(left==0,right==0) then
+                        local a = incursor
+                        incursor = dyn.tile
+                        dyn.tile = a
                     end
-                elseif match and dyn.tile.count>0 then
-                    incursor.count = incursor.count+1
-                    dyn.tile.count = dyn.tile.count-1
-                    if popup.key.sprint then
-                        incursor.count = incursor.count+dyn.tile.count
-                        dyn.tile.count = 0
+
+                    if button == 1 then
+                        incursor.count,dyn.tile.count = left, right
+                    else
+                        dyn.tile.count,incursor.count = left, right
                     end
-                    if incursor.count>level.stackLimit then
-                        dyn.tile.count = incursor.count%level.stackLimit
-                        incursor.count = incursor.count-dyn.tile.count
-                    end
-                else
-                    local a = incursor
-                    incursor = dyn.tile
-                    dyn.tile = a
                 end
 
-                if dyn.tile and dyn.tile.count < 1 then
-                    dyn.tile = nil
-                end
-                if incursor.count < 1 then
-                    incursor = nil
-                end
+                dyn.tile = dyn.tile.count >= 1 and dyn.tile or nil 
+                incursor = incursor.count >= 1 and incursor or nil 
             end,
             box = {x,y,w,h},
             hold = e.hold

@@ -186,11 +186,12 @@ return function(last,arg)
 
 
     -- TEMPORARY
-
+    level.stackLimit = level.stackLimit or 99
     local entity = level.entities[playerID]
+    entity.inHand = 1
     entity.content = {
+        {type = "tile", id = 1, amount = 50, invpos=3, code = pixel.setProperty(pixel.setProperty(pixel.setProperty(pixel.big(0,0,0,0),"color",1),"model",15),"solid",1)},
         {type = "item", id = "testitem", amount = 50, invpos=7},
-        {type = "tile", id = 1, amount = 50, invpos=5, code = pixel.setProperty(pixel.setProperty(pixel.setProperty(pixel.big(0,0,0,0),"color",1),"model",15),"solid",1)},
     }
 end
 
