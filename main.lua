@@ -9,6 +9,7 @@ end
 function love.run()
 	lovebird = require "lovebird"
 	inspect = require "inspect"
+	utf8 = require "utf8"
 	json = require "json"
 	binser = require "binser"
 	InputField = require "InputField"
@@ -23,6 +24,24 @@ function love.run()
 	if love.timer then love.timer.step() end
 
 	local dt = 0
+
+	do
+		local t = {
+			1,2
+		}
+		local specialKeys = {}
+		for k, v in pairs(t) do
+			specialKeys[v] = utf8.char(0xe000 + k)
+		end
+		keyR = function(k)
+			return specialKeys[k] or "["..string.upper(k or "this is a bug.. probably").."]"
+		end
+		returnSpecialSymbols = function()
+			return specialKeys
+		end
+	end
+
+	
 
 	data = {
 		keyBinding = {
@@ -57,7 +76,9 @@ function love.run()
 	love.graphics.setDefaultFilter("nearest","nearest")
 
 	do
-		local letters = " AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890,.:;!?#/\\|-+*=~"
+		local letters = " AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890.,:;!?#/\\()[]|-+*=~"..
+				table.concat(returnSpecialSymbols())
+
 		local extraspacing = 1
 
 		local imgData = love.image.newImageData("font/main.png")

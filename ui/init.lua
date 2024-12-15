@@ -39,8 +39,8 @@ function ui.draw(processed)
     love.graphics.push()
     local tx,ty = processed.translate(processed.w,processed.h,love.graphics.getWidth(),love.graphics.getHeight())
 
-    setColor(1,0,0)
-    love.graphics.rectangle("line",tx,ty,processed.w,processed.h)
+    --setColor(1,0,0)
+    --love.graphics.rectangle("line",tx,ty,processed.w,processed.h)
 
     if processed.hideOverflow then
         love.graphics.setScissor(tx,ty,processed.w,processed.h)
@@ -130,6 +130,12 @@ function ui.draw(processed)
     processed.clicked = mousedown
 end
 ui.drawElements = {
+    line = function(static)
+        local x,y,w,h,x2,y2 = unpack(static)
+        setColor(1,1,1,.5)
+        --love.graphics.setLineWidth(1)
+        love.graphics.line(x,y,x2,y2)
+    end,
     button = function(static,dynamic,hover)
         local x,y,w,h,label,fontscale,o,textoffx,color,hovercolor,linewidth = unpack(static)
         setColor(color)
@@ -293,9 +299,9 @@ ui.elements = {
                     local left, right; -- puts items from the left side to right
 
                     if button == 1 then
-                        left,right = incursor.count+0, dyn.tile.count+0
-                    else
                         left,right = dyn.tile.count+0, incursor.count+0
+                    else
+                        left,right = incursor.count+0, dyn.tile.count+0
                     end
 
                     if match and left>0 then
@@ -304,17 +310,17 @@ ui.elements = {
                             if popup.key.sprint then
                                 right = level.stackLimit+0
                             end
-                        else
+                        elseif right ~= 1/0 then
                             left = left-1
                             if popup.key.sprint then
                                 right = right+left
                                 left = 0
                             end
-                        end
-                        if right>level.stackLimit then
-                            local b = right-level.stackLimit
-                            right = right-b
-                            left = left+b
+                            if right>level.stackLimit then
+                                local b = right-level.stackLimit
+                                right = right-b
+                                left = left+b
+                            end
                         end
                     elseif xor(left==0,right==0) then
                         local a = incursor
@@ -323,9 +329,9 @@ ui.elements = {
                     end
 
                     if button == 1 then
-                        incursor.count,dyn.tile.count = left, right
-                    else
                         dyn.tile.count,incursor.count = left, right
+                    else
+                        incursor.count,dyn.tile.count = left, right
                     end
                 end
 
@@ -373,11 +379,19 @@ ui.elements = {
     label = function(e,size)
         local fontscale = e.text_size or 1
         local x,y,w,h = e.x*size, e.y*size, e.w*size, e.h*size
-        local ox,oy = ui.aligns[e.align or "none"](font:getWidth(e.label)*fontscale,fh*fontscale,w,h)
+        local ox,oy = ((type(e.align)=="function" and e.align) or ui.aligns[e.align or "none"])(font:getWidth(e.label)*fontscale,fh*fontscale,w,h)
         local _,l = font:getWrap(e.label,w)
         return {
             "label",
-            {x+ox,y+oy,w,math.max(h,oy+#l*fh*fontscale),e.label,fontscale,oy},
+            {x+ox,y+oy,w,math.max(h,oy+#l*fh*fontscale),e.label,fontscale,oy,e.multiline},
+            e.id
+        }
+    end,
+    line = function(e,size)
+        local x,y,w,h = e.x*size, e.y*size, e.w*size, e.h*size
+        return {
+            "line",
+            {x,y,w,h,x+w,y+h},
             e.id
         }
     end,

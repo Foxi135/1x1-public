@@ -79,6 +79,39 @@ return function(last,arg)
             getBits(big,0, 8),
             getBits(big,24,8)
     end
+    function pixel.encodeModel(t)
+        local n = 0
+        for i, v in pairs(t) do
+            n = n+(v and (2^(i-1)) or 0)
+        end
+        return n
+    end
+    function pixel.decodeModel(model)
+        local t = {}
+        local n = model+0
+        while n>0 do
+            local d = n %2
+            table.insert(t,d==1)
+            n = math.floor(n/2)
+        end
+        return t
+    end
+    function pixel.defineTile(tile)
+        local n = pixel.big(0,0,0,0)
+        for k, v in pairs(tile) do
+            if v then
+                n = pixel.setProperty(n,k,v)
+            end
+        end
+        return n
+    end
+    function pixel.setProperties(big,...)
+        local b = big+0
+        local t = {...}
+        for i = 1, #t, 2 do
+            b = pixel.setProperty(b,t[i],t[i+1])
+        end
+    end
     pixel.pixel = love.image.newImageData(2,2)
     pixel.pixel:mapPixel(function()
         return 1,1,1,1
@@ -173,6 +206,8 @@ return function(last,arg)
     
     playerID = utils.summonEntity("player",level.player.x,level.player.y,level.player.cx,level.player.cy)
     level.entities[playerID].color = entityColor.addColor(level.player.color)
+    level.entities[playerID].content = level.player.inventory
+    level.entities[playerID].inHand = level.player.inHand+0
     imageEntityPallete,quadPallete = entityColor.refresh()
     do
         local entity = level.entities[playerID]
@@ -183,15 +218,12 @@ return function(last,arg)
     utils.updateKeys(data.keyBinding,a)
     utils.ignoreFirstInputs(a)
 
-
-
-    -- TEMPORARY
-    level.stackLimit = level.stackLimit or 99
-    local entity = level.entities[playerID]
-    entity.inHand = 1
-    entity.content = {
-        {type = "tile", id = 1, amount = 50, invpos=3, code = pixel.setProperty(pixel.setProperty(pixel.setProperty(pixel.big(0,0,0,0),"color",1),"model",15),"solid",1)},
-        {type = "item", id = "testitem", amount = 50, invpos=7},
+    popup.entries.inventory.creative = popup.entries.inventory.initcreative{
+        {id=1,color=1,solid=1,tilemodel={true,true,true,true}},
+        {id=1,color=1,solid=1,tilemodel={false,true,true,true}},
+        {id=1,color=1,solid=1,tilemodel={true,false,true,true}},
+        {id=1,color=1,solid=1,tilemodel={true,true,false,true}},
+        {id=1,color=1,solid=1,tilemodel={true,true,true,false}},
     }
 end
 

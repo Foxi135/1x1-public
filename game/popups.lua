@@ -4,23 +4,46 @@ incursor = nil;
 local inventoryColumns = 5
 popup.entries = {
     inventory = {
-        creative = {
-            gridw=5,gridh=10,size=40,
-            cascade={itemslot={x=1,w=1,h=1,padding=4,labelpadding=1,text_size=1,textoffx=1}},
-            align=function(w,h,fw,fh)
-                return fw/2,(fh-h)/2
-            end,
-            {
-                tag="itemslot",id="cretive0_0",x=0,y=0,
-                tile={code=2147549680,color={1,1,1},label="wall", model={true,true,true,true},count=1/0}
-            },
-            {
-                tag="itemslot",id="cretive1_0",x=1,y=0,
-                tile={code=pixel.setProperty(2147549680,"color",1),color={0,1,1},label="wall", model={true,true,true,true},count=1/0}
+        initcreative = function(inserttiles)
+            local t = {
+                gridw=5.5,gridh=10,size=40,
+                cascade={itemslot={x=1,w=1,h=1,padding=4,labelpadding=1,text_size=1,textoffx=1}},
+                align=function(w,h,fw,fh)
+                    return fw/2+20,(fh-h)/2
+                end,
             }
-        },
+
+            for i, v in ipairs(inserttiles) do
+                local x,y = (i-1)%4+1,math.ceil(i/4)-1
+                print(pixel.encodeModel(v.tilemodel),inspect(v.tilemodel))
+                table.insert(t,{
+                    tag="itemslot",id="creative"..x.."/"..y,x=x-1,y=y,
+                    tile={
+                        label=tiles[v.id].name.."",
+                        count=1/0,
+                        color={
+                            ColorPallete[v.color+1][1]+0,
+                            ColorPallete[v.color+1][2]+0,
+                            ColorPallete[v.color+1][3]+0,
+                        },
+                        model=v.tilemodel,
+                        code=pixel.defineTile{
+                            model  = pixel.encodeModel(v.tilemodel),
+                            id     = v.id-1,
+                            color  = v.color,
+                            solid  = v.solid,
+                            opaque = v.opaqe,
+                            mark   = v.mark,
+                            light  = v.light,
+                        }
+                    }
+                }) 
+            end
+            print(inspect(t))
+            return t
+        end,
         start = function(data)
-            local A = {gridw=5,gridh=10,size=40,cascade={itemslot={x=1,w=1,h=1,padding=4,labelpadding=1,text_size=1,textoffx=1}},align=function(w,h,fw,fh)
+            local A = {gridw=5.5,gridh=10,size=40,cascade={itemslot={x=1,w=1,h=1,padding=4,labelpadding=1,text_size=1,textoffx=1}},align=function(w,h,fw,fh)
                 return fw/2-w,(fh-h)/2
             end}
             
@@ -54,8 +77,17 @@ popup.entries = {
                 end
             end
 
-            table.insert(A,{tag="button",linewidth=0,color={0,0,0,0},hovercolor={.9,.1,.1,.2},w=1,h=7,x=0,y=1,label="",padding=4,clicked=function() incursor=nil end})
+            table.insert(A,{tag="button",linewidth=0,color={0,0,0,0},hovercolor={.9,.1,.1,.2},w=1,h=10,x=0,y=0,label="",padding=4,clicked=function() incursor=nil end})
             table.insert(A,{tag="image",src="ui/trash2.png",w=1,h=1,x=0,y=4,color={.9,.1,.1,.2}})
+            table.insert(A,{tag="label",x=1,y=9,w=4,h=0,
+                align=function(w,h,fw,fh)
+                    return (fw-w)/2,0
+                end,
+                label=string.format("%s to pick up\n%s to place down\nhold %s to move all",keyR(_G.data.keyBinding.place),keyR(_G.data.keyBinding.unplace),keyR(_G.data.keyBinding.sprint))
+            })
+            
+            table.insert(A,{tag="line",x=5.5,y=0,w=0,h=10})
+            table.insert(A,{tag="line",x=1,y=1.5,w=4,h=0})
 
             popup.active = {ui.process(A),ui.process(popup.entries.inventory.creative),close=popup.entries.inventory.close}
         end,
@@ -84,6 +116,7 @@ popup.entries = {
         end
     }
 }
+
 
 function popup.evoke(name,data)
     popup.entries[name].start(data)

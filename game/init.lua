@@ -5,9 +5,12 @@ function saveWorld(level,folder)
     local player = level.entities[playerID]
     local info = {
         mapSize = level.mapSize,
+        stackLimit = level.stackLimit,
         player = {
             x=player.x,y=player.y,cx=player.cx,cy=player.cy,
-            color = level.player.color --entityColor.getColor(level.entities[playerID].color)
+            color = level.player.color, --entityColor.getColor(level.entities[playerID].color)
+            inventory = player.content,
+            inHand = player.inHand,
         },
     }
     local entities = {}
@@ -183,9 +186,12 @@ return {
             local item = items[i]
             if item and item.type=="tile" then
                 item.color = item.color or pixel.getProperty(item.code,"color")
+                item.model = item.model or pixel.decodeModel(pixel.getProperty(item.code,"model"))
                 setColor(ColorPallete[item.color+1])
                 for i = 0, 3 do
-                    love.graphics.rectangle("fill",x+slotPadding+w*(i%2)/2,slotPadding+w*math.floor(i/2)/2,w/2,w/2)
+                    if item.model[i+1] then
+                        love.graphics.rectangle("fill",x+slotPadding+w*(i%2)/2,slotPadding+w*math.floor(i/2)/2,w/2,w/2)
+                    end
                 end
             end
             if item and item.amount~=1 then
@@ -267,7 +273,15 @@ return {
             local cx,cy,x,y = cam.screenPosToTilePos()
             local poscode = utils.encodePosition(x,y,cx,cy)
             if not placed[poscode] then
-                utils.placetile(x,y,cx,cy,(key.place and WHITETILE) or {0,0,0,0})
+
+                local entity = level.entities[playerID]
+
+                local item = entity.content[utils.atInvPos(entity.content,entity.inHand)]
+                
+                if item then
+                    utils.placetile(x,y,cx,cy,(key.place and {pixel.getColor(item.code)}) or {0,0,0,0})
+                end
+
                 placed[poscode] = true
             end
         else
@@ -298,7 +312,7 @@ return {
         cam.zoom = cam.zoom+x
         cam.zoom = math.max(1,cam.zoom)
 
-        level.entities[playerID].inHand = (level.entities[playerID].inHand-1+y)%4+1
+        level.entities[playerID].inHand = (level.entities[playerID].inHand-1-y)%4+1
     end,
     keypressed = function(key)
         

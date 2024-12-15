@@ -280,7 +280,22 @@ function utils.updateKeys(keyBinding,key)
     end
 end
 
+function utils.atInvPos(inv,pos)
+    local i = 0
+    while true do
+        i=i+1 
+        if (not inv[i]) or inv[i].invpos>pos then
+            return 0
+        elseif inv[i].invpos == pos then
+            break
+        end
+    end
+    return i
+end
+
 function math.replacenan(x,y) return (tonumber(x) and x==x) and x or y end
 function xor(x,y) return (not x and y) or (x and not y) end
+
+
 
 return utils
