@@ -63,7 +63,10 @@ function love.run()
             slot4 = "4",
             slot5 = "5",
             lockDirection = "lshift"
-        }
+        },
+		swingLen = .4,
+		swingAngle = .25,
+		handLen = .4,
 	}
 	
 	if love.filesystem.getInfo("data.json") then

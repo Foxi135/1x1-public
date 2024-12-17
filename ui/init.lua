@@ -155,12 +155,13 @@ ui.drawElements = {
         local x,y,w,h,_,fontscale,_,hh,labelpadding = unpack(static)
         local tile = dynamic.tile
 
+        
         local label = " "..(dynamic.tile and dynamic.tile.label or "").." "
         local hw = font:getWidth(label)*fontscale+labelpadding*2
         
         setColor(1,1,1)
         love.graphics.rectangle("line",x,y,w,h)
-
+        
         if tile then
             if tile.model then
                 setColor(tile.color)
@@ -172,6 +173,8 @@ ui.drawElements = {
                         love.graphics.rectangle("fill",fx,fy,bw,bh)
                     end
                 end
+            else
+                love.graphics.draw(items.img,tile.quad,x+1,y+1,nil,(w-2)/8)
             end
             if tonumber(tile.count) and tile.count~=1 then
                 local rx,ry = x+labelpadding,y+labelpadding
@@ -290,10 +293,16 @@ ui.elements = {
                 end
                 if button == 3 then return end
 
-                dyn.tile = dyn.tile or {label=incursor.label,color=incursor.color,model=incursor.model,count=0, code=incursor.code}
-                incursor = incursor or {label=dyn.tile.label,color=dyn.tile.color,model=dyn.tile.model,count=0, code=dyn.tile.code}
+                local filled = (not dyn.tile) or (not incursor)
+                dyn.tile = dyn.tile or {label=incursor.label,color=incursor.color,model=incursor.model,type=incursor.type,count=0, code=incursor.code, quad=incursor.quad,id=incursor.id,durability=incursor.durability}
+                incursor = incursor or {label=dyn.tile.label,color=dyn.tile.color,model=dyn.tile.model,type=dyn.tile.type,count=0, code=dyn.tile.code, quad=dyn.tile.quad,id=dyn.tile.id,durability=dyn.tile.durability}
 
-                local match = incursor.type == dyn.tile.type and incursor.code == dyn.tile.code
+
+
+                local match = incursor.type == dyn.tile.type and 
+                              incursor.id   == dyn.tile.id and 
+                             (incursor.code == dyn.tile.code or incursor.type~="tile") and
+                             (((not incursor.durability) and not dyn.tile.durability) or incursor.type~="item" or filled)
 
                 do
                     local left, right; -- puts items from the left side to right

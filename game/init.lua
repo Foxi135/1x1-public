@@ -86,6 +86,8 @@ end
 return {
     load = require "game/load",
     draw = function()
+
+
         love.graphics.push()
         love.graphics.translate(cam.x*cam.zoom+math.floor(ww/2),cam.y*cam.zoom+math.floor(wh/2))
         love.graphics.scale(cam.zoom)
@@ -151,8 +153,54 @@ return {
             else
                 mx,my = mtx+(mox%1)-2,mty+(moy%1)-2
             end
-
+            
             setColor(1,1,1)
+
+            local player = level.entities[playerID]
+            local item = utils.atInvPos(player.content,player.inHand)
+            item = item and player.content[item]
+            if item then
+                local x,y,cx,cy = player.x+.5,player.y+.5,player.cx,player.cy
+                mtx,mty = mtx+mox%1+(cx-mcx)*level.mapSize,mty+moy%1+(cy-mcy)*level.mapSize
+
+                local angle = -math.atan2(y-mty,mtx-x)
+                local d = (angle-math.pi*3.5)%(-math.pi*2)+math.pi
+                d = d/math.abs(d)
+                local a = math.pi/4
+                local s = 6
+                local l = data.handLen*2
+
+                if item.type == "item" and player.usingItemAnim then
+                    local t = data.swingLen+0
+                    local a = math.pi*2*data.swingAngle*d
+                    angle = angle+a/2-a*(love.timer.getTime()%t)/t
+                    player.usingItemAnim = false
+                end
+                
+                if item.type == "item" and not items[item.id].maxdur then
+                    d = -d
+                    l = l/2
+                elseif item.type == "tile" then
+                    l = l*2
+                end
+
+                local fx,fy = x+(cx+cam.cx)*level.mapSize,y+(cy+cam.cy)*level.mapSize
+                fx,fy = fx+math.cos(angle)*l,fy+math.sin(angle)*l
+                love.graphics.push()
+                
+                if item.type == "tile" then
+                    love.graphics.translate(fx-.5,fy-.5)
+                    utils.drawTile(item.code,0,0,.8)
+                else
+                    love.graphics.translate(fx,fy)
+                    love.graphics.rotate(angle+a*d)
+                    love.graphics.draw(items.img,items[item.id].quad,0,0,nil,1/s,d/s,0,8)
+                end
+
+                --love.graphics.draw(items.img,items[item.id].quad,0,0,angle+a*d,1/s,d/s,0,8)
+
+                love.graphics.pop()
+            end
         end
 
         love.graphics.pop()
@@ -163,13 +211,13 @@ return {
         love.graphics.push()
         love.graphics.translate(ww/2-slotSize*2,wh-slotSize-1)
 
-        local items = {}
+        local slotitems = {}
         for k, item in pairs(level.entities[playerID].content) do
             if item then
                 if item.invpos>4 then
                     break
                 else
-                    items[item.invpos] = item
+                    slotitems[item.invpos] = item
                     if #item>=4 then
                         break
                     end
@@ -183,15 +231,16 @@ return {
             local x = (i-1)*slotSize
             setColor(0,0,0,.9)
             love.graphics.rectangle("fill",x,0,slotSize,slotSize)
-            local item = items[i]
+            local item = slotitems[i]
+
             if item and item.type=="tile" then
-                item.color = item.color or pixel.getProperty(item.code,"color")
-                item.model = item.model or pixel.decodeModel(pixel.getProperty(item.code,"model"))
-                setColor(ColorPallete[item.color+1])
-                for i = 0, 3 do
-                    if item.model[i+1] then
-                        love.graphics.rectangle("fill",x+slotPadding+w*(i%2)/2,slotPadding+w*math.floor(i/2)/2,w/2,w/2)
-                    end
+                utils.drawTile(item.code,x+slotPadding,slotPadding,w)
+            end
+            if item and item.type=="item" then
+                setColor(1,1,1)
+                love.graphics.draw(items.img,items[item.id].quad,x+slotPadding,slotPadding,nil,w/8)
+                if item.durability then
+                    --love.graphics.rectangle("fill",)
                 end
             end
             if item and item.amount~=1 then
@@ -271,19 +320,23 @@ return {
         if key.place or key.unplace then
             placed = placed or {}
             local cx,cy,x,y = cam.screenPosToTilePos()
-            local poscode = utils.encodePosition(x,y,cx,cy)
-            if not placed[poscode] then
+            local player = level.entities[playerID]
+            local item = player.content[utils.atInvPos(player.content,player.inHand)]
 
-                local entity = level.entities[playerID]
-
-                local item = entity.content[utils.atInvPos(entity.content,entity.inHand)]
-                
-                if item then
-                    utils.placetile(x,y,cx,cy,(key.place and {pixel.getColor(item.code)}) or {0,0,0,0})
+            if not item or item.type == "tile" then
+                local poscode = utils.encodePosition(x,y,cx,cy)
+                if not placed[poscode] then
+                    if key.unplace then
+                        utils.placetile(x,y,cx,cy,{0,0,0,0})
+                    elseif item then
+                        utils.placetile(x,y,cx,cy,{pixel.getColor(item.code)})
+                    end
+                    placed[poscode] = true
                 end
-
-                placed[poscode] = true
+            elseif item.type == "item" then
+                --
             end
+            player.usingItemAnim = true
         else
             placed = nil
         end

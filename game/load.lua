@@ -11,7 +11,7 @@ return function(last,arg)
         return x-x%.5+.5
     end
     
-    ColorPallete = {{0,0,0,0},{1,1,1,1},{1,0,0,1},{0,1,0,1},{0,0,1,1}}
+    ColorPallete = {{0,0,0,0},{1,1,1,1},{1,0,0,1},{0,1,0,1},{.87,.87,.87,1},{0.55,0.32,0.22,1}}
     renderShader = love.graphics.newShader([[    
         #pragma language glsl3
         uniform vec4 pallete[]]..#ColorPallete..[[];
@@ -187,6 +187,7 @@ return function(last,arg)
         tiles = t[1]
         tilebyname = t[2]
     end
+    items = require "game/items"
     
     entityAtlas,entityColor = unpack(require "game/entities")
     entities = entities or {}
@@ -219,11 +220,30 @@ return function(last,arg)
     utils.ignoreFirstInputs(a)
 
     popup.entries.inventory.creative = popup.entries.inventory.initcreative{
+        {id=2,color=2,solid=1,tilemodel={true,true,true,true}},
         {id=1,color=1,solid=1,tilemodel={true,true,true,true}},
+        {id=1,color=1,solid=1,tilemodel={false,true,true,false}},
+        {id=1,color=1,solid=1,tilemodel={true,false,false,true}},
+
         {id=1,color=1,solid=1,tilemodel={false,true,true,true}},
         {id=1,color=1,solid=1,tilemodel={true,false,true,true}},
         {id=1,color=1,solid=1,tilemodel={true,true,false,true}},
         {id=1,color=1,solid=1,tilemodel={true,true,true,false}},
+
+        {id=1,color=1,solid=1,tilemodel={true,true,false,false}},
+        {id=1,color=1,solid=1,tilemodel={false,false,true,true}},
+
+        {id=1,color=1,solid=1,tilemodel={true,false,true,false}},
+        {id=1,color=1,solid=1,tilemodel={false,true,false,true}},
+        
+        {id=1,color=1,solid=1,tilemodel={true,false,false,false}},
+        {id=1,color=1,solid=1,tilemodel={false,true,false,false}},
+        {id=1,color=1,solid=1,tilemodel={false,false,true,false}},
+        {id=1,color=1,solid=1,tilemodel={false,false,false,true}},
+        
+
+        {id=1},
+        {id=5},
     }
 end
 

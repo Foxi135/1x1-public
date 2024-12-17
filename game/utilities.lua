@@ -293,7 +293,19 @@ function utils.atInvPos(inv,pos)
     return i
 end
 
+function utils.drawTile(colorcode,x,y,w)
+    local color = pixel.getProperty(colorcode,"color")
+    local model = pixel.decodeModel(pixel.getProperty(colorcode,"model"))
+    setColor(ColorPallete[color+1])
+    for i = 0, 3 do
+        if model[i+1] then
+            love.graphics.rectangle("fill",x+w*(i%2)/2,y+w*math.floor(i/2)/2,w/2,w/2)
+        end
+    end
+end
+
 function math.replacenan(x,y) return (tonumber(x) and x==x) and x or y end
+function math.angledist(x,y) return (y-x +math.pi) %(math.pi*2) -math.pi end
 function xor(x,y) return (not x and y) or (x and not y) end
 
 

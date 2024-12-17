@@ -15,29 +15,44 @@ popup.entries = {
 
             for i, v in ipairs(inserttiles) do
                 local x,y = (i-1)%4+1,math.ceil(i/4)-1
-                print(pixel.encodeModel(v.tilemodel),inspect(v.tilemodel))
-                table.insert(t,{
-                    tag="itemslot",id="creative"..x.."/"..y,x=x-1,y=y,
-                    tile={
-                        label=tiles[v.id].name.."",
-                        count=1/0,
-                        color={
-                            ColorPallete[v.color+1][1]+0,
-                            ColorPallete[v.color+1][2]+0,
-                            ColorPallete[v.color+1][3]+0,
-                        },
-                        model=v.tilemodel,
-                        code=pixel.defineTile{
-                            model  = pixel.encodeModel(v.tilemodel),
-                            id     = v.id-1,
-                            color  = v.color,
-                            solid  = v.solid,
-                            opaque = v.opaqe,
-                            mark   = v.mark,
-                            light  = v.light,
+                if v.tilemodel then
+                    table.insert(t,{
+                        tag="itemslot",id="creative"..x.."/"..y,x=x-1,y=y,
+                        tile={
+                            label=tiles[v.id].name.."",
+                            count=1/0,
+                            color={
+                                ColorPallete[v.color+1][1]+0,
+                                ColorPallete[v.color+1][2]+0,
+                                ColorPallete[v.color+1][3]+0,
+                            },
+                            model=v.tilemodel,
+                            code=pixel.defineTile{
+                                model  = pixel.encodeModel(v.tilemodel),
+                                id     = v.id-1,
+                                color  = v.color,
+                                solid  = v.solid,
+                                opaque = v.opaqe,
+                                mark   = v.mark,
+                                light  = v.light,
+                            },
+                            type="tile"
                         }
-                    }
-                }) 
+                    }) 
+                else
+                    table.insert(t,{
+                        tag="itemslot",id="creative"..x.."/"..y,x=x-1,y=y,
+                        tile={
+                            label=items[v.id].name.."",
+                            id=v.id+0,
+                            count=1/0,
+                            color=(items[v.id].color or 1)+0,
+                            quad=items[v.id].quad,
+                            durability=items[v.id].maxdur and items[v.id].maxdur+0,
+                            type="item"
+                        }
+                    }) 
+                end
             end
             print(inspect(t))
             return t
@@ -63,7 +78,9 @@ popup.entries = {
                         getBits(tilemodel,2,1) == 1,
                         getBits(tilemodel,3,1) == 1,
                     }
-                    left[v.invpos] = {label=tiles[v.id].name.."",count=v.amount+0,color=tilecolor,model=tilemodel,code=v.code+0}
+                    left[v.invpos] = {label=tiles[v.id].name.."",count=v.amount+0,color=tilecolor,model=tilemodel,code=v.code+0,type="tile"}
+                elseif v.type == "item" then
+                    left[v.invpos] = {label=items[v.id].name.."",count=v.amount+0,id=v.id+0,color=(v.color or 1)+0,quad=items[v.id].quad,durability=v.durability and v.durability+0,type="item"}
                 end
             end
 
@@ -105,9 +122,16 @@ popup.entries = {
                     i = i+1
                     local tile = popup.active[1].dynamic["inv"..x..y].tile
                     if tile then
-                        table.insert(inventory,
-                            {type="tile",id=pixel.getProperty(tile.code,"id")+1,amount=tile.count+0,code=tile.code+0,invpos=i+0}
-                        )
+                        if tile.model then
+                            table.insert(inventory,
+                                {type="tile",id=pixel.getProperty(tile.code,"id")+1,amount=tile.count+0,code=tile.code+0,invpos=i+0}
+                            )
+                        else
+                            print(inspect({entity.content[i],tile}))
+                            table.insert(inventory,
+                                {type="item",id=tile.id,amount=(tile.count or 1)+0,color=tile.color+0,durability=tile.durability and tile.durability+0,invpos=i+0}
+                            )
+                        end
                     end
                 end
             end
@@ -130,7 +154,7 @@ function popup.close()
 end
 function popup.extradraw()
     local tile = incursor
-    if (not tile) or (not tile.model) then
+    if (not tile) then
         return
     end 
     local bw = 15
@@ -140,13 +164,18 @@ function popup.extradraw()
 
     setColor(0,0,0,.75)
     love.graphics.rectangle("fill",bx-bw-p,by-bw-p,bw*2+p2,bw*2+p2)
-    setColor(tile.color)
-
-    for i = 0, 3 do
-        if tile.model[i+1] then
-            local fx,fy = bx+(i%2-1)*bw,by+math.floor(i/2-1)*bw
-            love.graphics.rectangle("fill",fx,fy,bw,bw)
+    
+    if tile.model then
+        setColor(tile.color)
+        for i = 0, 3 do
+            if tile.model[i+1] then
+                local fx,fy = bx+(i%2-1)*bw,by+math.floor(i/2-1)*bw
+                love.graphics.rectangle("fill",fx,fy,bw,bw)
+            end
         end
+    else
+        setColor(1,1,1)
+        love.graphics.draw(items.img,tile.quad,bx-bw,by-bw,nil,bw*2/8)
     end
 
     local labelpadding = 1
