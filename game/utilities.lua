@@ -293,20 +293,63 @@ function utils.atInvPos(inv,pos)
     return i
 end
 
-function utils.drawTile(colorcode,x,y,w)
+function utils.drawTile(colorcode,x,y,w,emptyBitColor)
     local color = pixel.getProperty(colorcode,"color")
     local model = pixel.decodeModel(pixel.getProperty(colorcode,"model"))
-    setColor(ColorPallete[color+1])
+    local mark = pixel.getProperty(colorcode,"mark") == 1
+    local c = ColorPallete[color+1]
+    setColor(c)
+    local first = true
     for i = 0, 3 do
+        setColor(c)
         if model[i+1] then
+            if first and mark then
+                setColor(c[1]+.25,c[2]+.25,c[3]+.25,c[4])
+            end
+            love.graphics.rectangle("fill",x+w*(i%2)/2,y+w*math.floor(i/2)/2,w/2,w/2)
+            first = false
+        elseif emptyBitColor then
+            setColor(emptyBitColor)
             love.graphics.rectangle("fill",x+w*(i%2)/2,y+w*math.floor(i/2)/2,w/2,w/2)
         end
+    end
+end
+
+
+local modelsGrouped = {
+    [13]=1,[14]=1,[11]=1,[7]=1,
+    [2]=2,[1]=2,[8]=2,[4]=2,
+    [3]=3,[12]=3,[5]=3,[10]=3,
+}
+local modelRotateGroups = {
+    {14,13,7,11,offset=0},    --stairs
+    {8,4,1,2,offset=0},       --bits
+    {12,5,3,10,offset=-.25},  --slabs
+}
+function utils.rotateModelTowards(model,angle)
+    if modelsGrouped[model] then
+        local t = modelRotateGroups[modelsGrouped[model]]
+        local l,o = #t,(t.offset or 0)*math.pi
+        local d = (math.floor((angle+o)/math.pi/2*l)+l)%l+1
+        return t[d]
+    else
+        return model
     end
 end
 
 function math.replacenan(x,y) return (tonumber(x) and x==x) and x or y end
 function math.angledist(x,y) return (y-x +math.pi) %(math.pi*2) -math.pi end
 function xor(x,y) return (not x and y) or (x and not y) end
+function string.split(s,d)
+    if d == nil then
+        d = "%s"
+    end
+    local t = {}
+    for v in string.gmatch(s, "([^"..d.."]+)") do
+        table.insert(t,v)
+    end
+    return t
+end
 
 
 

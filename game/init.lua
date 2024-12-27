@@ -62,13 +62,14 @@ local funnypauseshader = love.graphics.newShader([[
         return p*vec4(0.5,0.5,0.5,1);
     }
 ]])
+local funnyitemshader = stripesShader
 local cover;
 local function updatecover(ww,wh)
     local w,h = ww or love.graphics.getWidth(),wh or love.graphics.getHeight()
     cover = love.graphics.newCanvas(w,h)
     funnypauseshader:send("dimensions",{w,h})
 end
-updatecover()
+
 
 local function drawPause(ww,wh)
     local w,h = ww or love.graphics.getWidth(),wh or love.graphics.getHeight()
@@ -83,10 +84,12 @@ local function drawPause(ww,wh)
 end
 
 
+
+
 return {
     load = require "game/load",
     draw = function()
-
+        --love.graphics.setBackgroundColor(.5,.5,1,1)
 
         love.graphics.push()
         love.graphics.translate(cam.x*cam.zoom+math.floor(ww/2),cam.y*cam.zoom+math.floor(wh/2))
@@ -140,11 +143,24 @@ return {
         love.graphics.setLineWidth(1/cam.zoom)
 
         do
+            local player = level.entities[playerID]
+            local item = utils.atInvPos(player.content,player.inHand)
+            item = item and player.content[item]
+
             local mcx,mcy, mtx,mty, mox,moy = cam.screenPosToTilePos()
             if level.chunks[mcx] and level.chunks[mcx][mcy] then
-                love.graphics.setLineWidth(1/cam.zoom)
-                love.graphics.rectangle("line",mtx+(mcx+cam.cx)*level.mapSize,mty+(mcy+cam.cy)*level.mapSize,1,1)
-                love.graphics.rectangle("line",0,0,1,1)
+                local x,y = mtx+(mcx+cam.cx)*level.mapSize,mty+(mcy+cam.cy)*level.mapSize
+                if item and item.type == "tile" then
+                    local t = utils.getTile(mtx,mty,mcx,mcy)
+                    local maching_color = pixel.getProperty(item.code,"color")==pixel.getProperty(t,"color")
+                    
+                    love.graphics.setShader(funnyitemshader)
+                    local a,b,c = love.graphics.getBackgroundColor()
+                    utils.drawTile(item.code,x,y,1,maching_color and {a,b,c,180/255})
+                    love.graphics.setShader()
+                end
+                setColor(1,1,1)
+                love.graphics.rectangle("line",x,y,1,1)
             end
             setColor(1,0,0,.5)
             local mx,my;
@@ -155,51 +171,34 @@ return {
             end
             
             setColor(1,1,1)
-
-            local player = level.entities[playerID]
-            local item = utils.atInvPos(player.content,player.inHand)
-            item = item and player.content[item]
-            if item then
+            if item and item.type == "item" then
                 local x,y,cx,cy = player.x+.5,player.y+.5,player.cx,player.cy
-                mtx,mty = mtx+mox%1+(cx-mcx)*level.mapSize,mty+moy%1+(cy-mcy)*level.mapSize
+                mtx,mty = mtx+mox%1-(cx-mcx)*level.mapSize,mty+moy%1-(cy-mcy)*level.mapSize
 
                 local angle = -math.atan2(y-mty,mtx-x)
                 local d = (angle-math.pi*3.5)%(-math.pi*2)+math.pi
                 d = d/math.abs(d)
-                local a = math.pi/4
+                local a = math.pi/4 --(180/4)
                 local s = 6
                 local l = data.handLen*2
 
-                if item.type == "item" and player.usingItemAnim then
+                if player.usingItemAnim then
                     local t = data.swingLen+0
-                    local a = math.pi*2*data.swingAngle*d
-                    angle = angle+a/2-a*(love.timer.getTime()%t)/t
+                    local b = math.pi*2 *data.swingAngle*d         -- 360 *swingAngle*d (-1 or 1)
+                    angle = angle+b/2-b*(love.timer.getTime()%t)/t --       (0 to 1)     
                     player.usingItemAnim = false
                 end
                 
-                if item.type == "item" and not items[item.id].maxdur then
+                if not items[item.id].maxdur then
                     d = -d
                     l = l/2
-                elseif item.type == "tile" then
-                    l = l*2
                 end
 
                 local fx,fy = x+(cx+cam.cx)*level.mapSize,y+(cy+cam.cy)*level.mapSize
                 fx,fy = fx+math.cos(angle)*l,fy+math.sin(angle)*l
-                love.graphics.push()
                 
-                if item.type == "tile" then
-                    love.graphics.translate(fx-.5,fy-.5)
-                    utils.drawTile(item.code,0,0,.8)
-                else
-                    love.graphics.translate(fx,fy)
-                    love.graphics.rotate(angle+a*d)
-                    love.graphics.draw(items.img,items[item.id].quad,0,0,nil,1/s,d/s,0,8)
-                end
-
-                --love.graphics.draw(items.img,items[item.id].quad,0,0,angle+a*d,1/s,d/s,0,8)
-
-                love.graphics.pop()
+                setColor(1,1,1)
+                love.graphics.draw(items.img,items[item.id].quad,fx,fy,angle+a*d,1/s,d/s,0,8)
             end
         end
 
@@ -235,8 +234,7 @@ return {
 
             if item and item.type=="tile" then
                 utils.drawTile(item.code,x+slotPadding,slotPadding,w)
-            end
-            if item and item.type=="item" then
+            elseif item and item.type=="item" then
                 setColor(1,1,1)
                 love.graphics.draw(items.img,items[item.id].quad,x+slotPadding,slotPadding,nil,w/8)
                 if item.durability then
@@ -275,6 +273,22 @@ return {
     end,
     update = function(dt)
         ww,wh = love.graphics.getDimensions()
+
+        if key.rotate then
+            local ww,wh = love.graphics.getDimensions()
+            local mx,my = love.mouse.getPosition()
+            local x,y = ((mx-ww/2)/cam.zoom-cam.x)%1, ((my-wh/2)/cam.zoom-cam.y)%1
+            local tileDirection = math.atan2(y-.5, x-.5)
+
+            do
+                local player = level.entities[playerID]
+                local item = utils.atInvPos(player.content,player.inHand)
+                item = player.content[item]
+                if item and item.type == "tile" then
+                    item.code = pixel.setProperty(item.code,"model",utils.rotateModelTowards(pixel.getProperty(item.code,"model"),tileDirection))
+                end
+            end
+        end
 
         do
             local a,b = ww/2/cam.zoom, wh/2/cam.zoom
@@ -382,14 +396,13 @@ return {
                     paused = nil
                 end},
                 {tag="button",label="save",y=5,clicked=function()
-                    if love.window.showMessageBox("surely?","Do you want to overwrite world at '"..level.folder.."'?",{"No","Yes"}) == 2 then
+                    if showMessageBox("Do you want to overwrite world at '"..level.folder.."'?",{"No","Yes"}) == 2 then
                         saveWorld(level,level.folder)
-                        love.window.showMessageBox("done!","Your world at '"..level.folder.."' was saved!")
+                        showMessageBox("Your world at '"..level.folder.."' was saved!",{"OK"})
                     end
                 end},
                 {tag="button",label="exit",y=6,clicked=function()
-                    print("a")
-                    if love.window.showMessageBox("surely?","Do want to exit?",{"No","Yes"}) == 2 then
+                    if showMessageBox("Do want to exit?",{"No","Yes"}) == 2 then
                         clear("paused","cam","level","clicked","pixel","ColorPallete","renderShader","getBits","utils","collision","keyBinding","key","clicked","tps","ticks","tickStart","tiles","tilebyname","entityAtlas","entityColor","entities","playerID","imageEntityPallete","quadPallete") -- amaezing :)
                         parts.start("menu")
                     end
@@ -446,6 +459,9 @@ return {
     end,
     resize = function(ww,wh)
         updatecover(ww,wh)
+        if data.AutoUiScale then
+            data.uiScale = math.max(1,math.floor(math.min(ww,wh)/(10*40)))
+        end
     end,
     event = function(...) popup.event(...) end
 }

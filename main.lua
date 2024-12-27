@@ -6,6 +6,79 @@ function clear(...)
 		end
 	end
 end
+function showMessageBox(message, buttonlist)
+	local result
+
+	local w = 10
+	local bw = w/#buttonlist
+	local template = {gridw=w,gridh=4,size=40,cascade={button={x=1,w=bw,h=1,padding=4,text_size=2}},align="center",
+		{tag="label",label=message.."",x=0,y=1,text_size=2,w=w,h=3}
+	}
+	for k, v in pairs(buttonlist) do
+		table.insert(template,{tag="button",label=v,y=3,x=bw*(k-1),clicked=function()
+			result = k
+		end})
+	end
+	local processed = ui.process(template)
+
+	love.graphics.setShader(stripesShader)
+	setColor(0,0,0,180/255)
+	love.graphics.rectangle("fill",0,0,love.graphics.getDimensions())
+	love.graphics.setShader()
+	setColor(0,0,0,.5)
+	love.graphics.rectangle("fill",0,0,love.graphics.getDimensions())
+	setColor(1,1,1)
+	ui.draw(processed)
+	love.graphics.present()
+
+	while true do
+		love.event.pump()
+		for name, a,b,c,d,e,f in love.event.poll() do
+			if name == "quit" then
+				if not love.quit or not love.quit() then
+					QUIT = a or 0
+					return
+				end
+			end
+			if name == "keypressed" then
+				if a == "escape" then
+					result = false
+					return
+				end
+			end
+			if name == "mousepressed" then
+				ui.mousepressed(processed,a,b,c,d)
+			end
+		end
+
+		if result ~= nil then break end
+
+		love.timer.sleep(1/20)
+	end
+	while love.event.pump() or love.mouse.isDown(1) do end
+	return result
+end
+
+stripesShader = love.graphics.newShader([[    
+    #pragma language glsl3
+
+    int slope = 5;
+
+    vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
+        ivec2 pos = ivec2(screen_coords);
+        int s = 1;
+        if (color.a*255 == 180) {
+            color.a = 1;
+            s = -1;
+        }
+        int i = int(pos.x+(pos.y%slope)*s)%slope;
+        if (i == 0) {
+            return color;
+        };
+        discard;
+    }
+]])
+
 function love.run()
 	lovebird = require "lovebird"
 	inspect = require "inspect"
@@ -40,40 +113,7 @@ function love.run()
 			return specialKeys
 		end
 	end
-
 	
-
-	data = {
-		keyBinding = {
-            up = "w",
-            down = "s",
-            left = "a",
-            right = "d",
-            sprint = "lshift",
-            esc = "escape",
-            inventory = "e",
-            console = "c",
-            place = 1,
-            unplace = 2,
-            save = "f5",
-            appdata = "f6",
-            slot1 = "1",
-            slot2 = "2",
-            slot3 = "3",
-            slot4 = "4",
-            slot5 = "5",
-            lockDirection = "lshift"
-        },
-		swingLen = .4,
-		swingAngle = .25,
-		handLen = .4,
-	}
-	
-	if love.filesystem.getInfo("data.json") then
-		--data = json.decode(love.filesystem.read("data.json"))
-	else
-		love.filesystem.write("data.json",json.encode(data))
-	end
 
 	setColor = love.graphics.setColor
 	love.graphics.setDefaultFilter("nearest","nearest")
@@ -121,7 +161,7 @@ function love.run()
 
 	lovebird:init()
 
-	parts.start("game","a")
+	parts.start("menu","a")
 
 	--[[love.filesystem.write("0_-1.bin",binser.serialize(
 		{

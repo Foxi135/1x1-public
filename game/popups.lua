@@ -54,7 +54,7 @@ popup.entries = {
                     }) 
                 end
             end
-            print(inspect(t))
+            --print(inspect(t))
             return t
         end,
         start = function(data)
@@ -95,7 +95,7 @@ popup.entries = {
             end
 
             table.insert(A,{tag="button",linewidth=0,color={0,0,0,0},hovercolor={.9,.1,.1,.2},w=1,h=10,x=0,y=0,label="",padding=4,clicked=function() incursor=nil end})
-            table.insert(A,{tag="image",src="ui/trash2.png",w=1,h=1,x=0,y=4,color={.9,.1,.1,.2}})
+            table.insert(A,{tag="image",src="ui/trash3.png",w=1,h=1,x=0,y=4,color={.9,.1,.1,.2}})
             table.insert(A,{tag="label",x=1,y=9,w=4,h=0,
                 align=function(w,h,fw,fh)
                     return (fw-w)/2,0
@@ -127,7 +127,7 @@ popup.entries = {
                                 {type="tile",id=pixel.getProperty(tile.code,"id")+1,amount=tile.count+0,code=tile.code+0,invpos=i+0}
                             )
                         else
-                            print(inspect({entity.content[i],tile}))
+                            --print(inspect({entity.content[i],tile}))
                             table.insert(inventory,
                                 {type="item",id=tile.id,amount=(tile.count or 1)+0,color=tile.color+0,durability=tile.durability and tile.durability+0,invpos=i+0}
                             )
@@ -161,32 +161,34 @@ function popup.extradraw()
     local p = 4
     local p2 = p*2
     local bx,by = love.mouse.getPosition()
-
+    love.graphics.push()
+    love.graphics.translate(bx,by)
+    love.graphics.scale(data.uiScale)
     setColor(0,0,0,.75)
-    love.graphics.rectangle("fill",bx-bw-p,by-bw-p,bw*2+p2,bw*2+p2)
+    love.graphics.rectangle("fill",-bw-p,-bw-p,bw*2+p2,bw*2+p2)
     
     if tile.model then
         setColor(tile.color)
         for i = 0, 3 do
             if tile.model[i+1] then
-                local fx,fy = bx+(i%2-1)*bw,by+math.floor(i/2-1)*bw
+                local fx,fy = (i%2-1)*bw,math.floor(i/2-1)*bw
                 love.graphics.rectangle("fill",fx,fy,bw,bw)
             end
         end
     else
         setColor(1,1,1)
-        love.graphics.draw(items.img,tile.quad,bx-bw,by-bw,nil,bw*2/8)
+        love.graphics.draw(items.img,tile.quad,-bw,-bw,nil,bw*2/8)
     end
-
+    
     local labelpadding = 1
     local cw = font:getWidth(tile.count or 1)+labelpadding*2
-
-    local x,y = love.mouse.getPosition()
-    local fx,fy = x-bw,y-bw
+    
+    local fx,fy = -bw,-bw
     setColor(0,0,0,0.75)
     love.graphics.rectangle("fill",fx,fy,cw-1,fh-2)
     setColor(1,1,1)
     love.graphics.print(tile.count,fx,fy)
+    love.graphics.pop()
 end
 
 function popup.draw()

@@ -28,22 +28,23 @@ function ui.process(frame)
             dynamic[r[3]] = r.dynamic or {}
         end
     end
-    print(inspect(events))
+    --print(inspect(events))
     return {clicked=true,w=frame.size*frame.gridw,h=frame.size*frame.gridh,items_per_row=frame.items_per_row,size=frame.size,draw=drawInstructions,dynamic=dynamic,translate=type(frame.align)=="function" and frame.align or ui.aligns[frame.align or "none"],events=events,hideOverflow=frame.hide_overflow,scrollY=frame.scrollY and 0 or nil}
 end
 function ui.draw(processed)
     local mousedown = love.mouse.isDown(1)
     processed.clicked = mousedown and not processed.clicked
-    local mx,my = love.mouse.getPosition()
     local alreadyHovered
     love.graphics.push()
-    local tx,ty = processed.translate(processed.w,processed.h,love.graphics.getWidth(),love.graphics.getHeight())
+    love.graphics.scale(data.uiScale)
+    local mx,my = love.graphics.inverseTransformPoint(love.mouse.getPosition())
+    local tx,ty = processed.translate(processed.w,processed.h,love.graphics.getWidth()/data.uiScale,love.graphics.getHeight()/data.uiScale)
 
     --setColor(1,0,0)
     --love.graphics.rectangle("line",tx,ty,processed.w,processed.h)
 
     if processed.hideOverflow then
-        love.graphics.setScissor(tx,ty,processed.w,processed.h)
+        love.graphics.setScissor(tx*data.uiScale,ty*data.uiScale,processed.w*data.uiScale,processed.h*data.uiScale)
     end
 
     local scrollX,scrollY = processed.scrollX or 0, processed.scrollY or 0
@@ -151,6 +152,23 @@ ui.drawElements = {
         end
         love.graphics.print(label,x+(w-font:getWidth(label)*fontscale)/2+textoffx,y+o,nil,fontscale)
     end,
+    cycle = function(static,dynamic,hover)
+        local x,y,w,h,label,o,fontscale,textoffx,color,hovercolor,linewidth = unpack(static)
+        setColor(color)
+        if hover then
+            setColor(hovercolor)
+        end
+        love.graphics.rectangle("fill",x,y,w,h)
+        setColor(1,1,1)
+        if linewidth ~= 0 then            
+            love.graphics.setLineWidth(linewidth)
+            love.graphics.rectangle("line",x,y,w,h)
+            love.graphics.setLineWidth(1)
+        end
+        love.graphics.print(label,x+textoffx,y+o,nil,fontscale)
+        local t = tostring(dynamic.cycle[dynamic.option])
+        love.graphics.print(t,x+w-font:getWidth(t)*fontscale-textoffx,y+o,nil,fontscale)
+    end,
     itemslot = function(static,dynamic,hover)
         local x,y,w,h,_,fontscale,_,hh,labelpadding = unpack(static)
         local tile = dynamic.tile
@@ -164,15 +182,7 @@ ui.drawElements = {
         
         if tile then
             if tile.model then
-                setColor(tile.color)
-                local bw,bh = w/2-1,h/2-1
-                local bx,by = x+1,y+1
-                for i = 0, 3 do
-                    if tile.model[i+1] then
-                        local fx,fy = bx+(i%2)*bw,by+math.floor(i/2)*bh
-                        love.graphics.rectangle("fill",fx,fy,bw,bh)
-                    end
-                end
+                utils.drawTile(tile.code,x+1,y+1,w-2)
             else
                 love.graphics.draw(items.img,tile.quad,x+1,y+1,nil,(w-2)/8)
             end
@@ -229,7 +239,7 @@ ui.drawElements = {
             local fx,fy = fx+padding,fy+(h/static[7]-fh2)/2
             
             love.graphics.setScissor()
-            love.graphics.setScissor(fx+tx-1,fy+ty-1,w-padding*2+2,h-padding*2+2)
+            love.graphics.setScissor((fx+tx-1)*data.uiScale,(fy+ty-1)*data.uiScale,(w-padding*2+2)*data.uiScale,(h-padding*2+2)*data.uiScale)
             
 
             love.graphics.setFont(font2)
@@ -352,6 +362,7 @@ ui.elements = {
         }
     end,
     button = function(e,size)
+        
         local fontscale = (e.text_size or 1)+0
         local padding = e.padding or 0
         local x,y,w,h = e.x*size+padding,
@@ -369,6 +380,30 @@ ui.elements = {
             box = {x,y,w,h},
             hold = e.hold
         } or nil
+    end,
+    cycle = function(e,size)
+        local fontscale = (e.text_size or 1)+0
+        local padding = e.padding or 0
+        local x,y,w,h = e.x*size+padding,
+                        e.y*size+padding,
+                        e.w*size-padding*2,
+                        e.h*size-padding*2
+                        
+        local o = (h-fh*fontscale)/2
+
+        return {
+            "cycle",
+            {x,y,w,h,e.label.."",o,fontscale,(e.textoffx or 0)+padding,e.color or {0,0,0,.2},e.hovercolor or {1,1,1,.2},e.linewidth or 1},
+            dynamic = {option=(e.option or 1)+0,cycle=e.cycle},
+            e.id,
+            hover = true
+        },{
+            click = function(hold,dyn)
+                dyn.option = dyn.option%#dyn.cycle+1
+            end,
+            box = {x,y,w,h},
+            hold = e.hold
+        }
     end,
     image = function(e,size)
         local img = love.graphics.newImage(e.src)
@@ -460,8 +495,8 @@ function ui.mousepressed(processed,x,y,button,presscount)
         return
     end
     
-    local a,b = processed.translate(processed.w,processed.h,love.graphics.getWidth(),love.graphics.getHeight())
-    local mx,my = x-a,y-b
+    local a,b = processed.translate(processed.w,processed.h,love.graphics.getWidth()/data.uiScale,love.graphics.getHeight()/data.uiScale)
+    local mx,my = x/data.uiScale-a,y/data.uiScale-b
     if not inBox(mx,my,0,0,processed.w,processed.h) then
         return
     end
@@ -495,8 +530,8 @@ function ui.mousereleased(processed,x,y,button)
         return
     end
 
-    local a,b = processed.translate(processed.w,processed.h,love.graphics.getWidth(),love.graphics.getHeight())
-    local mx,my = x-a,y-b
+    local a,b = processed.translate(processed.w,processed.h,love.graphics.getWidth()/data.uiScale,love.graphics.getHeight()/data.uiScale)
+    local mx,my = x/data.uiScale-a,y/data.uiScale-b
     my = my+(processed.scrollY or 0)
 
     for k, v in ipairs(processed.events.mousereleased or {}) do
@@ -509,8 +544,8 @@ function ui.mousereleased(processed,x,y,button)
 end
 
 function ui.wheelmoved(processed,x,y)
-    local a,b = processed.translate(processed.w,processed.h,love.graphics.getWidth(),love.graphics.getHeight())
-    local mx,my = love.mouse.getX()-a,love.mouse.getY()-b
+    local a,b = processed.translate(processed.w,processed.h,love.graphics.getWidth()/data.uiScale,love.graphics.getHeight()/data.uiScale)
+    local mx,my = love.mouse.getX()/data.uiScale-a,love.mouse.getY()/data.uiScale-b
     if not inBox(mx,my,0,0,processed.w,processed.h) then
         return
     end
@@ -537,8 +572,9 @@ function ui.mousemoved(processed,x,y)
     if not processed.events.mousemovedover then
         return
     end
-    local a,b = processed.translate(processed.w,processed.h,love.graphics.getWidth(),love.graphics.getHeight())
-    local mx,my = love.mouse.getX()-a,love.mouse.getY()-b
+    print("a")
+    local a,b = processed.translate(processed.w,processed.h,love.graphics.getWidth()/data.uiScale,love.graphics.getHeight()/data.uiScale)
+    local mx,my = love.mouse.getX()/data.uiScale-a,love.mouse.getY()/data.uiScale-b
     if not inBox(mx,my,0,0,processed.w,processed.h) then
         return
     end

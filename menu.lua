@@ -22,8 +22,43 @@ function buttonFuncs.openWoldSelect()
     end
     processed = {ui.process(menu.worlds),ui.process(result)}
 end
+
+utils = require "game.utilities"
+local function getData_loop(value,keys,setTo)
+    local k = tonumber(keys[1]) or keys[1]
+    if #keys == 1 then
+        if setTo ~= nil then
+            value[k] = setTo
+            return
+        end
+        return value[k]
+    end
+    return getData_loop(value[k],table.remove(keys,1) and keys)
+end
+local function getData(path)
+    local t = string.split(path,".")
+    return getData_loop(data,t)
+end
+local function setData(path,value)
+    local t = string.split(path,".")
+    return getData_loop(data,t,value)
+end
+
+local function loadSettings(template)
+    for k, v in pairs(template) do
+        if tonumber(k) and v.tag == "cycle" then
+            local d = getData(v.id)
+            if type(d) == "boolean" then
+                template[k].option = d and 1 or 2
+            else
+            end
+        end
+    end
+    return template
+end
+
 function buttonFuncs.openSettings()
-    processed = {ui.process(menu.settings),ui.process(menu.settingsScroll)}
+    processed = {ui.process(menu.settings),ui.process(loadSettings(menu.settingsScroll))}
 end
 local cyclelength = 10*60
 local cyclestart = 0
@@ -81,6 +116,9 @@ local function genBG()
 end
 
 
+
+
+
 local fromIntro;
 
 return {
@@ -104,15 +142,30 @@ return {
             settings = {gridw=11,gridh=14,size=40,cascade={button={padding=4,text_size=2,y=12,w=4,h=1},label={text_size=2}},align="center",
                 {tag="label",label="settings",w=9,h=1,x=1,y=1,align="center"},
                 {tag="button",label="back",x=6,clicked=function()
-                    processed = {ui.process(menu.main)}
+                    if showMessageBox("Do you want to exit settings?",{"No","Yes"}) == 2 then
+                        processed = {ui.process(menu.main)}
+                    end
                 end},
-                {tag="button",label="apply",x=1,clicked=function()
-                    processed = {ui.process(menu.main)}
+                {tag="button",label="save and apply",x=1,clicked=function()
+                    if showMessageBox("Do want to change the settings?",{"No","Yes"}) == 2 then
+                        for k, v in pairs(menu.settingsScroll) do
+                            if tonumber(k) and v.tag == "cycle" then
+                                setData(v.id,(v.cycle or {true,false})[processed[2].dynamic[v.id].option])
+                            end
+                        end
+                        love.filesystem.write("data.json",json.encode(data))
+
+                        love.window.setVSync(data.vsync)
+                        parts.entries.menu.resize(love.graphics.getDimensions())
+                        love.window.setFullscreen(data.fullscreen)
+                    end
                 end},
             },
-            settingsScroll = {gridw=11,gridh=10,size=40,cascade={button={padding=4,text_size=2,x=1,w=9,h=1,clicked=buttonFuncs.openWorldView},label={text_size=2,x=1,w=9,h=1}},align="center",hide_overflow=true,scrollY=true,
-                {tag="label",label="video",x=1,y=0,align="center"},
-                {tag="input",label="hello",x=1,y=1,align="center",text_size=2,w=9,h=1,id="textinputtest",padding=5},
+            settingsScroll = {gridw=10,gridh=10,size=40,cascade={button={padding=4,text_size=2,x=1,w=10,h=1},cycle={padding=4,text_size=2,x=1,w=10,h=1,cycle={true,false}},label={text_size=2,x=1,w=10,h=1}},align="center",hide_overflow=true,scrollY=true,
+                {tag="label",label="visual",x=0,y=0,align="center"},
+                {tag="cycle",label="Auto scale UI",x=0,y=1,text_size=2,w=10,h=1,id="AutoUiScale"},
+                {tag="cycle",label="Fullscreen",x=0,y=2,text_size=2,w=5,h=1,id="fullscreen"},
+                {tag="cycle",label="Vsync",x=5,y=2,text_size=2,w=5,h=1,id="vsync"},
             }
         }
         processed = {ui.process(menu.main)}
@@ -122,9 +175,10 @@ return {
         print(lastLoaded)
         fromIntro = lastLoaded == "intro"
 
-        genBG()
+        parts.entries.menu.resize(love.graphics.getDimensions())
     end,
     draw = function()
+
         local cover;
         do
             local daynightcycletime = love.timer.getTime()-cyclestart
@@ -144,7 +198,6 @@ return {
         end
 
         setColor(1,1,1)
-        --love.graphics.print("Menu")
         
         for k, v in pairs(processed) do
             ui.draw(processed[k])
@@ -155,14 +208,14 @@ return {
             setColor(1,1,1)
         end
     end,
-    update = function()
-        if processed[1].dynamic.fps then -- dynamic label demo
-            processed[1].dynamic.fps.label = love.timer.getFPS()
-        end
-    end,
     mousepressed = function(x,y,button,presscount)
         for k, v in pairs(processed) do
             ui.mousepressed(v,x,y,button,presscount)
+        end
+    end,
+    update = function()
+        if processed[1].dynamic.fps then -- dynamic label demo
+            processed[1].dynamic.fps.label = love.timer.getFPS()
         end
     end,
     keypressed = function(key,scancode,isRepeat)
@@ -190,7 +243,10 @@ return {
             ui.textinput(v,t)
         end
     end,
-    resize = function()
+    resize = function(ww,wh)
+        if data.AutoUiScale then
+            data.uiScale = math.max(1,math.floor(math.min(ww,wh)/(10*40)))
+        end
         genBG()
     end,
     close = function()

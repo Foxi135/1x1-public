@@ -18,13 +18,15 @@ return function(last,arg)
         uniform float mapSize;
     
         float unit = 1.0/mapSize;
+
+        uint findFirst1(uint x) {
+            return uint(log2(float(x & -x)));
+        }
     
         vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
             uvec4 p = uvec4(floor(Texel(tex, texture_coords)*255)); //get colors in 255
     
-            if (p.a==0u) {
-                return vec4(0,0,0,0);
-            }
+            if (p.a==0u) discard;
     
             uvec2 pixelpos = uvec2(texture_coords.x*mapSize,texture_coords.y*mapSize); //set up model and 2x2 coords
             uint model = p.b>>4;
@@ -34,12 +36,12 @@ return function(last,arg)
     
             if (((model>>index)&1u) == 1u) { //model
                 vec4 add = vec4(0,0,0,0);
-                if (((p.r&1u) == 1u)&&(((p.r>>3)&3u)==index)) { //interactible mark
+                if ((((p.r>>1)&1u) == 1u)&&(findFirst1(model)==index)) { //interactible mark
                     add = vec4(0.25,0.25,0.25,0);
                 }
                 return pallete[p.g]+add;
             }
-            return vec4(0,0,0,0);
+            discard;
         }
     ]])
     renderShader:send("pallete",unpack(ColorPallete))
@@ -49,16 +51,19 @@ return function(last,arg)
         return math.floor(number/(2^start)) % (2^len)
     end
     
-    pixel = {properties = {id={21,10},color={8,6},solid={16,1},opaque={18,1},mark={16,1},model={4,4},light={0,4}}}
+    pixel = {properties = {id={21,10},color={8,6},solid={16,1},opaque={18,1},mark={17,1},model={4,4},light={0,4}}}
     function pixel.getProperty(big,name)
         local a = pixel.properties[name]
         return getBits(big,a[1],a[2])
     end
     function pixel.setProperty(big,name,value)
         local a = pixel.properties[name]
-        local b = big-getBits(big,a[1],a[2])
-        return big+value*(2^a[1])
+        local b = big-getBits(big,a[1],a[2])*(2^a[1])
+        return b+value*(2^a[1])
     end
+
+
+
     function pixel.big(r,g,b,a)
         return math.max(128,a*255)*16777216+
                             r*255 *65536+
@@ -129,8 +134,16 @@ return function(last,arg)
     pixel.entity2 = love.graphics.newImage(pixel.entity2)
     
     
-    
-    
+    local P = pixel.big(0,0,0,0)
+    function TEST()
+        local t = {id=500,color=50,solid=1,opaque=0,mark=1,model=15,light=3}
+        for k, v in pairs(t) do
+            P = pixel.setProperty(P,k,v)
+        end
+        for k, v in pairs(t) do
+            print("TEST",pixel.getProperty(P,k),v)
+        end
+    end
     
     utils = require "game/utilities"
     require "game/chunks"
@@ -232,7 +245,6 @@ return function(last,arg)
 
         {id=1,color=1,solid=1,tilemodel={true,true,false,false}},
         {id=1,color=1,solid=1,tilemodel={false,false,true,true}},
-
         {id=1,color=1,solid=1,tilemodel={true,false,true,false}},
         {id=1,color=1,solid=1,tilemodel={false,true,false,true}},
         
@@ -242,8 +254,10 @@ return function(last,arg)
         {id=1,color=1,solid=1,tilemodel={false,false,false,true}},
         
 
-        {id=1},
+        {id=1},{id=2},{id=3},{id=4},
         {id=5},
     }
+
+    parts.entries.game.resize(love.graphics.getDimensions())
 end
 
