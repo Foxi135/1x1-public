@@ -15,10 +15,16 @@ function saveWorld(level,folder)
     }
     local entities = {}
     for k, v in pairs(level.entities) do
-        if (not k == playerID) and v.permanent then
+        if type(v)=="table" and k ~= playerID and v.permanent then
             table.insert(entities,v)
         end
     end
+
+    for k, v in pairs(entities) do
+        v.id = nil
+        v.drawID = nil
+    end
+
     love.filesystem.write(folder.."entities",binser.serialize(entities))
     love.filesystem.write(folder.."info.json",json.encode(info))
 
@@ -83,7 +89,11 @@ local function drawPause(ww,wh)
     funnypauseshader:send("dimensions",{w,h})
 end
 
-
+function SETUP()
+    UNFOLLOWCAM = true
+    SLOW = 5
+    ticks = (love.timer.getTime()-tickStart)*(SLOW or tps)
+end
 
 
 return {
@@ -112,6 +122,8 @@ return {
         local maxx = -cam.x+ww/cam.zoom/2
         local miny = -cam.y-wh/cam.zoom/2-1
         local maxy = -cam.y+wh/cam.zoom/2
+
+
         for i,cx,cy in cam.eachVisibleChunk() do
             if level.entitiesInChunks[cx] and level.entitiesInChunks[cx][cy] then
                 local tcx,tcy = math.floor((cx+cam.cx)*level.mapSize),math.floor((cy+cam.cy)*level.mapSize) -- transformed chunk x/y
@@ -122,14 +134,22 @@ return {
                     chunk.spriteBatch = love.graphics.newSpriteBatch(imageEntityPallete,5000,"stream")
                     for k, v in pairs(eic) do
                         local e = level.entities[k]
-                        if not e.drawID then
-                            e.drawID = chunk.spriteBatch:add(quadPallete[e.color or entityAtlas[e.name].color],e.x,e.y,nil,.5)
+                        local sw = e.customQuadScaleW or .5
+                        local sh = e.customQuadScaleH or .5
+                        if not (e.drawID or e.noBatch) then
+                            e.drawID = chunk.spriteBatch:add(e.customQuad or quadPallete[e.color or entityAtlas[e.name].color],e.x,e.y,nil,sw *e.w,sh *e.h)
                         end
                     end
                 end
+
                 
                 love.graphics.draw(chunk.spriteBatch,tcx,tcy)
             end
+        end
+
+        for k, v in pairs(cam.entitiesToDraw) do
+            local e = level.entities[v]
+            entityAtlas[e.name].draw(e,e.x+(e.cx+cam.cx)*level.mapSize,e.y+(e.cy+cam.cy)*level.mapSize)
         end
 
         local max;
@@ -176,6 +196,7 @@ return {
                 mtx,mty = mtx+mox%1-(cx-mcx)*level.mapSize,mty+moy%1-(cy-mcy)*level.mapSize
 
                 local angle = -math.atan2(y-mty,mtx-x)
+                cam.handAngle = angle+0
                 local d = (angle-math.pi*3.5)%(-math.pi*2)+math.pi
                 d = d/math.abs(d)
                 local a = math.pi/4 --(180/4)
@@ -268,6 +289,8 @@ return {
             "active chunks: "..level.activeChunks,
             "fps: "..love.timer.getFPS(),
             "entities: "..#level.entities,
+            "updating entities: "..UPDATEDENTITIESCOUNT,
+            "isColliding calls per tick: "..(PROTOTYPE or 0),
         },"\n"))
 
     end,
@@ -292,11 +315,18 @@ return {
 
         do
             local a,b = ww/2/cam.zoom, wh/2/cam.zoom
-            cam.minx,cam.miny = math.floor((-a-cam.x)/level.mapSize-cam.cx), math.floor((-b-cam.y)/level.mapSize-cam.cy)
-            cam.maxx,cam.maxy = math.floor((a-cam.x)/level.mapSize-cam.cx), math.floor((b-cam.y)/level.mapSize-cam.cy)
+            cam.mintx,cam.minty = -a-cam.x,-b-cam.y
+            cam.maxtx,cam.maxty =  a-cam.x, b-cam.y
+
+            cam.minx,cam.miny = math.floor(cam.mintx/level.mapSize-cam.cx), math.floor(cam.minty/level.mapSize-cam.cy)
+            cam.maxx,cam.maxy = math.floor(cam.maxtx/level.mapSize-cam.cx), math.floor(cam.maxty/level.mapSize-cam.cy)
+
+            cam.mintx,cam.minty = cam.mintx%level.mapSize,cam.minty%level.mapSize
+            cam.mintx,cam.minty = cam.mintx%level.mapSize,cam.minty%level.mapSize
         end
 
-        local now = (love.timer.getTime()-tickStart)*tps
+        local now = (love.timer.getTime()-tickStart)*(SLOW or tps)
+
         while now>ticks do
             if popup.active then 
                 key={}
@@ -314,6 +344,11 @@ return {
             end
 
             --local dt = math.ceil(now)-ticks
+
+            UPDATEDENTITIESCOUNT = 0
+
+            --collision.resetCatche()
+            cam.entitiesToDraw = {}
             for i,cx,cy in cam.eachVisibleChunk() do
                 if level.entitiesInChunks[cx] and level.entitiesInChunks[cx][cy] and level.chunks[cx] and level.chunks[cx][cy] then
                     local chunk = level.chunks[cx][cy]
@@ -322,22 +357,27 @@ return {
                     for k, v in pairs(eic) do
                         local entity = level.entities[k]
                         local template = entityAtlas[entity.name]
+                        if template.draw then
+                            table.insert(cam.entitiesToDraw,k)
+                        end
                         if template.update then
                             template.update(level.entities[k])
                         end
+                        UPDATEDENTITIESCOUNT = UPDATEDENTITIESCOUNT+1
                     end
+
                 end
             end
 
             ticks = ticks+1
         end
         if key.place or key.unplace then
-            placed = placed or {}
             local cx,cy,x,y = cam.screenPosToTilePos()
             local player = level.entities[playerID]
             local item = player.content[utils.atInvPos(player.content,player.inHand)]
-
+            
             if not item or item.type == "tile" then
+                placed = placed or {}
                 local poscode = utils.encodePosition(x,y,cx,cy)
                 if not placed[poscode] then
                     if key.unplace then
@@ -348,14 +388,30 @@ return {
                     placed[poscode] = true
                 end
             elseif item.type == "item" then
-                --
+                if (key.unplace and not placed) or key.place then
+                    placed = true
+                    if items[item.id].used then
+                        items[item.id].used(item,{x,y,cx,cy},key.place,key.unplace)
+                    end
+                end
             end
             player.usingItemAnim = true
         else
             placed = nil
         end
+
+        if key.throw then
+            local player = level.entities[playerID]
+            local item = player.content[utils.atInvPos(player.content,player.inHand)]
+
+            local angle = (cam.handAngle or 0)+0
+            local player = level.entities[playerID]
+            local entityID = utils.summonEntity("thrownItem",player.x+0,player.y+0,player.cx+0,player.cy+0,_,_,item)
+            local entity = level.entities[entityID]
+            entity.vx,entity.vy = math.cos(angle)*2,math.sin(angle)
+        end
         
-        do
+        if not UNFOLLOWCAM then
             local entity = level.entities[playerID]
             cam.x,cam.y,cam.cx,cam.cy = -entity.x,-entity.y,-entity.cx,-entity.cy
         end
@@ -397,7 +453,28 @@ return {
                 end},
                 {tag="button",label="save",y=5,clicked=function()
                     if showMessageBox("Do you want to overwrite world at '"..level.folder.."'?",{"No","Yes"}) == 2 then
+
+                        do                        
+                            love.graphics.setShader(funnyitemshader)
+                            setColor(0,0,0)
+                            love.graphics.rectangle("fill",0,0,love.graphics.getDimensions())
+                            love.graphics.setShader()
+                            setColor(0,0,0,0.5)
+                            love.graphics.rectangle("fill",0,0,love.graphics.getDimensions())
+                            setColor(1,1,1)
+                            local fh = fh*3
+                            for i = 0, math.ceil(love.graphics.getHeight()/fh) do
+                                love.graphics.print("saving...",0,fh*i,nil,3)
+                                setColor(1,1,1,0.5)
+                            end
+                            love.graphics.present()
+                        end
+
+
                         saveWorld(level,level.folder)
+
+                        
+                        love.graphics.clear(0,0,0,0)
                         showMessageBox("Your world at '"..level.folder.."' was saved!",{"OK"})
                     end
                 end},
@@ -442,10 +519,15 @@ return {
 
 
                 love.graphics.origin()
-                setColor(1,1,1)
                 love.graphics.clear(love.graphics.getBackgroundColor())
-
+                
+                setColor(1,1,1)
                 love.graphics.draw(paused)
+                love.graphics.setShader(funnyitemshader)
+                setColor(0,0,0,180/255)
+                love.graphics.rectangle("fill",0,0,love.graphics.getDimensions())
+                love.graphics.setShader()
+                
                 ui.draw(processed)
                 love.graphics.print("(frozen)")
     
@@ -463,5 +545,5 @@ return {
             data.uiScale = math.max(1,math.floor(math.min(ww,wh)/(10*40)))
         end
     end,
-    event = function(...) popup.event(...) end
+    event = function(...) if popup.active then popup.event(...) end end
 }

@@ -58,9 +58,11 @@ function utils.generateChunk(cx,cy)
                 if isn't modified (since loading from file or generated), remove from memory comepltely
             4 - save imagedatas into temporary 
     ]]
+            print(cx,cy)
     level.chunks[cx] = level.chunks[cx] or {}
     level.chunks[cx][cy] = {}
     level.chunks[cx][cy].redraw = {}
+    level.chunks[cx][cy].data = {}
     level.chunks[cx][cy].map = love.image.newImageData(level.mapSize,level.mapSize)
     level.chunks[cx][cy].mapDraw = love.graphics.newCanvas(level.mapSize*2,level.mapSize*2)
 
@@ -105,12 +107,6 @@ function utils.unloadChunk(cx,cy)
         if level.chunks[cx][cy].modified then
             level.chunks[cx][cy].map:encode("png",path)
         end
-        local includeEntities-- = table.hasContent(level.chunks[cx][cy].entities)
-        if includeEntities then
-            love.filesystem.write(path..".bin",binser.serialize({
-                entities = level.chunks[cx][cy].entities
-            }))
-        end
     end
     
     level.chunks[cx][cy].map:release()
@@ -130,6 +126,26 @@ function utils.loadLevel(path)
     level.player = info.player
     level.stackLimit = info.stackLimit
     level.chunks = {}
+
+    level.entities = binser.deserialize((love.filesystem.read(level.folder.."entities")))[1]
+    level.entitiesInChunks = {}
+
+    print(#level.entities,"#ENTITIES")
+
+    local entityAtlas = entityAtlas or require"game.entities"[1]
+    for k, v in pairs(level.entities) do
+        local a,b,cx,cy = utils.fixCoords(v.x,v.y,v.cx,v.cy)
+        if not (level.entitiesInChunks[cx] or {})[cy] then
+            level.entitiesInChunks[cx] = level.entitiesInChunks[cx] or {}
+            level.entitiesInChunks[cx][cy] = {}
+        end 
+        level.entities[k].x,level.entities[k].y,level.entities[k].cx,level.entities[k].cy = a,b,cx,cy
+        level.entitiesInChunks[cx][cy][k] = true
+        level.entities[k].drawID = nil
+        level.entities[k].noBatch = entityAtlas[v.name].noBatch
+        level.entities[k].id = k
+        print(inspect(v))
+    end
     
     renderShader:send("mapSize",level.mapSize*2)
 end
@@ -142,6 +158,7 @@ function utils.placetile(ix,iy,icx,icy,colorCode)
     chunk.redraw[x.."_"..y] = {x,y,colorCode}
     chunk.map:setPixel(x,y,colorCode)
     chunk.modified = true
+    collision.removeFromCatche(x,y,cx,cy)
 end
 
 function utils.updateDrawableMap(cx,cy)
@@ -228,16 +245,17 @@ function utils.getTileRGB(x,y,cx,cy)
     return level.chunks[cx][cy].map:getPixel(x,y)
 end
 
-function utils.summonEntity(name,x,y,cx,cy, signal)
+function utils.summonEntity(name,x,y,_cx,_cy,w,h, signal)
+    local a,b,cx,cy = utils.fixCoords(x,y,_cx,_cy)
     if not (level.entitiesInChunks[cx] or {})[cy] then
         level.entitiesInChunks[cx] = level.entitiesInChunks[cx] or {}
         level.entitiesInChunks[cx][cy] = {}
     end 
-    local a,b,c,d = utils.fixCoords(x,y,cx,cy)
 
     table.insert(level.entities,{
         name = name.."",
-        x=a,y=b,cx=c,cy=d,
+        x=a,y=b,cx=cx,cy=cy,
+        w= w or entityAtlas[name].w or 1,h= h or entityAtlas[name].h or 1,
     })
     local i = #level.entities
 
@@ -246,7 +264,8 @@ function utils.summonEntity(name,x,y,cx,cy, signal)
     entity.id = i+0
 
     level.entitiesInChunks[cx][cy][i] = true
-    
+
+    entity.noBatch = entityAtlas[name].noBatch
     if entityAtlas[name].summoned then
         entityAtlas[name].summoned(entity,signal)
     end
@@ -336,6 +355,10 @@ function utils.rotateModelTowards(model,angle)
         return model
     end
 end
+
+
+
+--level.data[x.."_"..y.."_"..cx.."_"..cy]
 
 function math.replacenan(x,y) return (tonumber(x) and x==x) and x or y end
 function math.angledist(x,y) return (y-x +math.pi) %(math.pi*2) -math.pi end

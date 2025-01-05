@@ -7,6 +7,20 @@ local items = {
     {name="iron shovel", color=5, texture=3, maxdur=300},
     {name="iron sword", color=5, texture=4, maxdur=300},
     {name="apple", texture=5},
+    {name="summon", texture=6, used=function(item,tilepos, place,unplace)
+        local angle = (cam.handAngle or 0)+0
+        local player = level.entities[playerID]
+        local entityID = utils.summonEntity("test2",player.x+0,player.y+0,player.cx+0,player.cy+0)
+        local entity = level.entities[entityID]
+        entity.vx,entity.vy = math.cos(angle)*2,math.sin(angle)
+
+        if unplace then
+            entity.vx,entity.vy = 0,0
+            entity.x,entity.y,entity.cx,entity.cy = unpack(tilepos)
+            entity.y = entity.y+0.01
+            entity.permanent = true
+        end
+    end},
 }
 
 

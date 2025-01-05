@@ -18,15 +18,19 @@ local manipulate = {
                 entity.drawID = nil
             end
         end
-        if chunk.spriteBatch then
+        if chunk.spriteBatch and not entity.noBatch then
             if entity.drawID then
-                chunk.spriteBatch:set(entity.drawID,quadPallete[entityAtlas[entity.name].color],entity.x,entity.y,nil,.5)
+                chunk.spriteBatch:set(entity.drawID,quadPallete[entityAtlas[entity.name].color],entity.x,entity.y,nil,.5*entity.w,.5*entity.h)
             else
-                entity.drawID = chunk.spriteBatch:add(quadPallete[entityAtlas[entity.name].color],entity.x,entity.y,nil,.5)
+                entity.drawID = chunk.spriteBatch:add(quadPallete[entityAtlas[entity.name].color],entity.x,entity.y,nil,.5*entity.w,.5*entity.h)
             end
         end
     end,
     updatePos = function(entity,prevcx,prevcy) -- gl reading this lmao
+        if not entity.moved then
+            return
+        end
+        entity.moved = false
         entity.x,entity.y,entity.cx,entity.cy = utils.fixCoords(unpackPosition(entity))
         local cx,cy = entity.cx,entity.cy
         local chunk = (level.chunks[cx] or {})[cy]
@@ -40,64 +44,148 @@ local manipulate = {
                 entity.drawID = nil
             end
         end
-        if chunk.spriteBatch then
+        if chunk.spriteBatch and not entity.noBatch then
+            local sw = entity.customQuadScaleW or .5
+            local sh = entity.customQuadScaleH or .5
             if entity.drawID then
-                chunk.spriteBatch:set(entity.drawID,quadPallete[entity.color or entityAtlas[entity.name].color],entity.x,entity.y,nil,.5)
+                chunk.spriteBatch:set(entity.drawID,entity.customQuad or quadPallete[entity.color or entityAtlas[entity.name].color],entity.x,entity.y,nil,sw*entity.w,sh*entity.h)
             else
-                entity.drawID = chunk.spriteBatch:add(quadPallete[entity.color or entityAtlas[entity.name].color],entity.x,entity.y,nil,.5)
+                entity.drawID = chunk.spriteBatch:add(entity.customQuad or quadPallete[entity.color or entityAtlas[entity.name].color],entity.x,entity.y,nil,sw*entity.w,sh*entity.h)
             end
         end
     end,
-    physicsY = function(entity)
+    physicsY = function(entity,skipevents)
+        if entity.vy == 0 then 
+            entity.vy = entity.vy+entity.gravity
+            return 
+        end
+
+        local h = entity.y+0
         entity.y = entity.y+entity.vy
-        if (collision.isColliding(unpackPosition(entity,1,1,true))) then
+        
+        local a = hfloor(math.abs(entity.vy))
+        local b = entity.vy>0 and 1 or 0
+
+        if collision.isColliding(entity.x,entity.y-a*b,entity.cx,entity.cy,entity.w,entity.h+a,true) then
             local d = entity.vy/math.abs(entity.vy)/2
+            if d~=d then d=.5 end 
+
+            while not collision.isColliding(unpackPosition(entity,entity.w,entity.h,true)) do
+                entity.y = entity.y-d
+            end
             entity.y = hfloor(entity.y)
-            while collision.isColliding(unpackPosition(entity,1,1,true)) do
+
+            while collision.isColliding(unpackPosition(entity,entity.w,entity.h,true)) do
                 entity.y = entity.y-d
             end
             entity.canJump = entity.vy>=0 and love.timer.getTime() or -1
             entity.vy = 0
+
+            entity.vx = entity.vx*(1-entity.friction)
         end
         entity.vy = entity.vy+entity.gravity
-    end,
-    physicsX = function(entity)
-        entity.x = entity.x+entity.vx
-        if (collision.isColliding(unpackPosition(entity,1,1,true))) then
-            local d = entity.vx/math.abs(entity.vx)/2
-            entity.x = hfloor(entity.x+d/2)
-            while collision.isColliding(unpackPosition(entity,1,1,true)) do
-                entity.x = entity.x-d
-            end
-            entity.vx = 0
+        if h~=entity.y then
+            entity.moved = true
         end
+        return returnevents
+    end,
+    physicsX = function(entity,skipevents)
+        if entity.vx == 0 then return end
+        local h = entity.x+0
+        entity.x = entity.x+entity.vx
+        if collision.isColliding(unpackPosition(entity,entity.w,entity.h,true)) then
+            local d = entity.vx/math.abs(entity.vx)/2
+
+            if entity.vy == entity.gravity and not collision.isColliding(entity.x,entity.y-.5,entity.cx,entity.cy,entity.w,entity.h,true) then
+                entity.y = entity.y-.5
+            elseif d==d then
+                entity.x = hfloor(entity.x+d/2)+0
+                while collision.isColliding(unpackPosition(entity,entity.w,entity.h,true)) do
+                    entity.x = entity.x-d
+                end
+                entity.vx = 0
+            end
+        end
+
+        
         entity.vx = entity.vx*(1-entity.friction)
+
+        if h~=entity.x then
+            entity.moved = true
+        end
+        return returnevents
     end
 }
 
-
+function TEST()
+    for k,v in pairs(level.entitiesInChunks[-1][0]) do
+        print(level.entities[k].cx,level.entities[k].cy)
+    end
+end
 
 
 local entities = {
     test = {color=1},
-    test2 = {color=2,
-        summoned = function(entity,justLoad)
-            entity.vx,entity.vy = 2,0
+    thrownItem = {color=1,
+        noBatch = true,
+        summoned = function(entity,item)
             entity.accx,entity.gravity = 0.05,0.05
-            entity.friction = 0.2
+            entity.gravity = 0.07
+            entity.friction = 0.1
+
+            entity.item = item
         end,
         update = function(entity,dt)
             local a,b = entity.cx+0,entity.cy+0
             manipulate.physicsY(entity)
             manipulate.physicsX(entity)
+            manipulate.updatePos(entity,a,b)
+
+        end,
+        
+        draw = function(entity,x,y)
+            love.graphics.draw(items.img,items[entity.item.id].quad,x,y,nil,entity.w/8)
+        end
+    },
+    test2 = {color=2,
+        w=1,h=.5,
+        summoned = function(entity,signal)
+            entity.accx,entity.gravity = 0.05,0.05
+            entity.gravity = 0.07
+            entity.friction = 0.1
+            
+        end,
+        update = function(entity,dt)
+            if not entity.customQuad then                
+                entity.customQuad = love.graphics.newQuad(entityAtlas[entity.name].color*4-3,0,2,1,imageEntityPallete:getDimensions())
+                entity.customQuadScaleW = .5
+                entity.customQuadScaleH = 1
+            end
+
+            local a,b = entity.cx+0,entity.cy+0
+            manipulate.physicsY(entity)
+            manipulate.physicsX(entity)
+            
+            entity.countdown = entity.countdown or 0
+
+
+            
+            
+            if entity.vy == entity.gravity then
+                if entity.countdown == 0 then
+                    entity.vy = -1
+                    entity.countdown = 5
+                end
+                entity.countdown = entity.countdown-1
+            end
 
             manipulate.updatePos(entity,a,b)
         end
     },
     player = {
-        summoned = function(entity,justLoad)
+        summoned = function(entity,signal)
             entity.vx,entity.vy = 0,0
-            entity.friction = 0.5
+            entity.friction = 0.3
             entity.maxspeedx,entity.maxspeedy = 10/tps,100/tps
             entity.accx,entity.gravity = entity.maxspeedx*.5,0.07
         end,
@@ -122,6 +210,10 @@ local entities = {
                 entity.vy = -0.50625
                 entity.canJump = -1
             end
+            entity.vy = math.max(math.min(entity.vy,entity.maxspeedy),-entity.maxspeedy)
+            local e1 = manipulate.physicsY(entity)
+
+
             if key.left or key.right then
                 entity.vx = entity.vx+((key.right and 1 or 0)+(key.left and -1 or 0))*entity.accx
                 local dir = entity.vx/math.abs(entity.vx)/2
@@ -141,7 +233,10 @@ local entities = {
                 end
             end
             entity.vx = math.max(math.min(entity.vx,entity.maxspeedx),-entity.maxspeedx)
-            entity.vy = math.max(math.min(entity.vy,entity.maxspeedy),-entity.maxspeedy)
+
+            local e2 = manipulate.physicsX(entity)
+
+
             if key.down then
                 local rx = hfloor(entity.x+.25) -- rounded x
                 local y = entity.y+1
@@ -157,10 +252,19 @@ local entities = {
                 end
             end
 
-            manipulate.physicsY(entity)
-            manipulate.physicsX(entity)
 
+            local h = entity.x+0
+
+            PROTOTYPE = 0
+
+            local skip = {}
+
+
+
+            
             manipulate.updatePos(entity,a,b)
+            --print(entity.moved,entity.vx,entity.x,entity.x-h)
+            
         end
     },
 }

@@ -17,7 +17,8 @@ data = {
         slot3 = "3",
         slot4 = "4",
         slot5 = "5",
-        rotate = "lshift"
+        rotate = "lshift",
+        throw = "q",
     },
 	swingLen = .4,
 	swingAngle = .25,
@@ -54,5 +55,7 @@ function love.conf(t)
     t.version = "11.5"
     t.identity = identity
 end
+
+
 
 

@@ -99,7 +99,7 @@ function love.run()
 	local dt = 0
 
 	do
-		local t = {
+		local t = { -- special input button
 			1,2
 		}
 		local specialKeys = {}
@@ -161,7 +161,7 @@ function love.run()
 
 	lovebird:init()
 
-	parts.start("menu","a")
+	parts.start("game","b")
 
 	--[[love.filesystem.write("0_-1.bin",binser.serialize(
 		{
@@ -171,29 +171,29 @@ function love.run()
 		}
 	))]]
 
+
+
 	return function()
-		if love.event then
-			love.event.pump()
-			for name, a,b,c,d,e,f in love.event.poll() do
-				if name == "quit" then
-					if not love.quit or not love.quit() then
-						return a or 0
-					end
+		love.event.pump()
+		for name, a,b,c,d,e,f in love.event.poll() do
+			if name == "quit" then
+				if not love.quit or not love.quit() then
+					return a or 0
 				end
-				love.handlers[name](a,b,c,d,e,f)
-				if scene[name] then scene[name](a,b,c,d,e,f) end
-				if scene.event then scene.event(name,a,b,c,d,e,f) end
 			end
+			love.handlers[name](a,b,c,d,e,f)
+			if scene[name] then scene[name](a,b,c,d,e,f) end
+			if scene.event then scene.event(name,a,b,c,d,e,f) end
 		end
 
-		if love.timer then dt = love.timer.step() end
+		dt = love.timer.step()
 		lovebird:update()
 		if scene.update then scene.update(dt) end
 
-		if love.graphics and love.graphics.isActive() then
+		if love.graphics.isActive() then
 			love.graphics.origin()
 			love.graphics.clear(love.graphics.getBackgroundColor())
-
+			
 			if scene.draw then scene.draw() end
 
 			love.graphics.present()
@@ -201,7 +201,7 @@ function love.run()
 
 		if QUIT then return QUIT end
 
-		if love.timer then love.timer.sleep(0.001) end
+		love.timer.sleep(0.001)
 	end
 end
 

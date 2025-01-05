@@ -183,6 +183,7 @@ return function(last,arg)
             local mtx,mty = math.floor(mutx),math.floor(muty)
             return mcx,mcy,mtx,mty,mox,moy,mutx,muty
         end
+
     end
     
     
@@ -215,8 +216,7 @@ return function(last,arg)
         clicked[i] = true
     end
     
-    level.entities = {}
-    level.entitiesInChunks = {}
+
     
     playerID = utils.summonEntity("player",level.player.x,level.player.y,level.player.cx,level.player.cy)
     level.entities[playerID].color = entityColor.addColor(level.player.color)
@@ -256,6 +256,7 @@ return function(last,arg)
 
         {id=1},{id=2},{id=3},{id=4},
         {id=5},
+        {id=6},
     }
 
     parts.entries.game.resize(love.graphics.getDimensions())
