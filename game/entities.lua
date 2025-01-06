@@ -40,17 +40,15 @@ local manipulate = {
             level.entitiesInChunks[cx][cy] = level.entitiesInChunks[cx][cy] or {}
             level.entitiesInChunks[cx][cy][entity.id] = true
             if entity.drawID and level.entitiesInChunks[prevcx] and level.entitiesInChunks[prevcx][prevcy] then
-                level.chunks[prevcx][prevcy].spriteBatch:set(entity.drawID,0,0,0,0)
+                level.chunks[prevcx][prevcy].spriteBatch[entity.spriteBatchType]:set(entity.drawID,0,0,0,0)
                 entity.drawID = nil
             end
         end
         if chunk.spriteBatch and not entity.noBatch then
-            local sw = entity.customQuadScaleW or .5
-            local sh = entity.customQuadScaleH or .5
             if entity.drawID then
-                chunk.spriteBatch:set(entity.drawID,entity.customQuad or quadPallete[entity.color or entityAtlas[entity.name].color],entity.x,entity.y,nil,sw*entity.w,sh*entity.h)
+                chunk.spriteBatch[entity.spriteBatchType]:set(entity.drawID,entity.quad,entity.x,entity.y,nil,entity.customQuadScaleW,entity.customQuadScaleH)
             else
-                entity.drawID = chunk.spriteBatch:add(entity.customQuad or quadPallete[entity.color or entityAtlas[entity.name].color],entity.x,entity.y,nil,sw*entity.w,sh*entity.h)
+                entity.drawID = chunk.spriteBatch[entity.spriteBatchType]:add(entity.quad,entity.x,entity.y,nil,entity.customQuadScaleW,entity.customQuadScaleH)
             end
         end
     end,
@@ -125,9 +123,18 @@ end
 
 
 local entities = {
+    default = {
+        color = 1,
+        w=1, h=1,
+        customQuadScaleW=.5, customQuadScaleH=.5, 
+        spriteBatchType = "entity"
+    },
     test = {color=1},
-    thrownItem = {color=1,
-        noBatch = true,
+    thrownItem = {
+        color = 1,
+        customQuadScaleW=1/8, customQuadScaleH=1/8, 
+        spriteBatchType = "item",
+
         summoned = function(entity,item)
             entity.accx,entity.gravity = 0.05,0.05
             entity.gravity = 0.07
@@ -136,6 +143,10 @@ local entities = {
             entity.item = item
         end,
         update = function(entity,dt)
+            if not entity.customQuad then
+                entity.customQuad = items[entity.item.id].quad
+            end
+
             local a,b = entity.cx+0,entity.cy+0
             manipulate.physicsY(entity)
             manipulate.physicsX(entity)
@@ -143,9 +154,6 @@ local entities = {
 
         end,
         
-        draw = function(entity,x,y)
-            love.graphics.draw(items.img,items[entity.item.id].quad,x,y,nil,entity.w/8)
-        end
     },
     test2 = {color=2,
         w=1,h=.5,

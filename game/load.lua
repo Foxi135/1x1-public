@@ -149,6 +149,17 @@ return function(last,arg)
     require "game/chunks"
     collision = require "game/collision"
     popup = require "game/popups"
+
+    tiles,tilebyname = nil,nil
+    do
+        local t = require "game/tiles"
+        tiles = t[1]
+        tilebyname = t[2]
+    end
+    items = require "game/items"
+    
+    entityAtlas,entityColor = unpack(require "game/entities")
+    entities = entities or {}
     
     utils.loadLevel(arg)
     
@@ -195,16 +206,7 @@ return function(last,arg)
     ticks = 0
     tickStart = love.timer.getTime()
     
-    tiles,tilebyname = nil,nil
-    do
-        local t = require "game/tiles"
-        tiles = t[1]
-        tilebyname = t[2]
-    end
-    items = require "game/items"
-    
-    entityAtlas,entityColor = unpack(require "game/entities")
-    entities = entities or {}
+
     
     level.activeChunks = 0
     

@@ -131,19 +131,23 @@ return {
                 local chunk = level.chunks[cx][cy]
                 local eic = level.entitiesInChunks[cx][cy]
                 if not chunk.spriteBatch then
-                    chunk.spriteBatch = love.graphics.newSpriteBatch(imageEntityPallete,5000,"stream")
+                    chunk.spriteBatch = {
+                        entity = love.graphics.newSpriteBatch(imageEntityPallete,5000,"stream"),
+                        item = love.graphics.newSpriteBatch(items.img,5000,"stream"),
+                    }
                     for k, v in pairs(eic) do
                         local e = level.entities[k]
                         local sw = e.customQuadScaleW or .5
                         local sh = e.customQuadScaleH or .5
                         if not (e.drawID or e.noBatch) then
-                            e.drawID = chunk.spriteBatch:add(e.customQuad or quadPallete[e.color or entityAtlas[e.name].color],e.x,e.y,nil,sw *e.w,sh *e.h)
+                            e.drawID = chunk.spriteBatch[e.spriteBatchType or "entity"]:add(e.customQuad or quadPallete[e.color or entityAtlas[e.name].color],e.x,e.y,nil,sw *e.w,sh *e.h)
                         end
                     end
                 end
 
                 
-                love.graphics.draw(chunk.spriteBatch,tcx,tcy)
+                love.graphics.draw(chunk.spriteBatch.entity,tcx,tcy)
+                love.graphics.draw(chunk.spriteBatch.item,tcx,tcy)
             end
         end
 
@@ -406,7 +410,7 @@ return {
 
             local angle = (cam.handAngle or 0)+0
             local player = level.entities[playerID]
-            local entityID = utils.summonEntity("thrownItem",player.x+0,player.y+0,player.cx+0,player.cy+0,_,_,item)
+            local entityID = utils.summonEntity("thrownItem",player.x+0,player.y+0,player.cx+0,player.cy+0,nil,nil,item)
             local entity = level.entities[entityID]
             entity.vx,entity.vy = math.cos(angle)*2,math.sin(angle)
         end

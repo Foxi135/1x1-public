@@ -144,6 +144,8 @@ function utils.loadLevel(path)
         level.entities[k].drawID = nil
         level.entities[k].noBatch = entityAtlas[v.name].noBatch
         level.entities[k].id = k
+        setmetatable(level.entities[k],utils.entityMetatable)
+        print(level.entities[k].color)
         print(inspect(v))
     end
     
@@ -259,6 +261,10 @@ function utils.summonEntity(name,x,y,_cx,_cy,w,h, signal)
     })
     local i = #level.entities
 
+    setmetatable(level.entities[i],utils.entityMetatable)
+
+
+
     local entity = level.entities[i]
     
     entity.id = i+0
@@ -356,7 +362,14 @@ function utils.rotateModelTowards(model,angle)
     end
 end
 
-
+utils.entityMetatable = {
+    __index = function(table,key)
+        if key == "quad" then
+            return table.customQuad or quadPallete[table.color or entityAtlas[table.name].color]
+        end
+        return entityAtlas[table.name][key] or entityAtlas.default[key]
+    end
+}
 
 --level.data[x.."_"..y.."_"..cx.."_"..cy]
 
