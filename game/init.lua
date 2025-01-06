@@ -137,10 +137,8 @@ return {
                     }
                     for k, v in pairs(eic) do
                         local e = level.entities[k]
-                        local sw = e.customQuadScaleW or .5
-                        local sh = e.customQuadScaleH or .5
-                        if not (e.drawID or e.noBatch) then
-                            e.drawID = chunk.spriteBatch[e.spriteBatchType or "entity"]:add(e.customQuad or quadPallete[e.color or entityAtlas[e.name].color],e.x,e.y,nil,sw *e.w,sh *e.h)
+                        if not (e.drawID or e.noBatch) then -- if not drawID, but also not noBatch
+                            e.drawID = chunk.spriteBatch[e.spriteBatchType]:add(e.customQuad or quadPallete[e.color or entityAtlas[e.name].color],e.x,e.y,nil,e.customQuadScaleW,e.customQuadScaleH)
                         end
                     end
                 end
