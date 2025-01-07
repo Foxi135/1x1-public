@@ -16,7 +16,7 @@ return {
                 local fox,foy = floor(ox),floor(oy) 
                 --    fox :3
 
-                local i = utils.encodePosition(fox,foy,cx,cy)
+                local i = utils.encodePosition(fixc(fox,foy,cx,cy))
                 local c = CATCHE[i]
                 if c ~= 0 then
                     local solid,model,big;

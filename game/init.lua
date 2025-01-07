@@ -14,15 +14,16 @@ function saveWorld(level,folder)
         },
     }
     local entities = {}
+    local skip = {drawID=true,id=true}
     for k, v in pairs(level.entities) do
         if type(v)=="table" and k ~= playerID and v.permanent then
-            table.insert(entities,v)
+            table.insert(entities,{})
+            for k, v in pairs(v) do
+                if not skip[k] then
+                    entities[#entities][k] = v
+                end
+            end
         end
-    end
-
-    for k, v in pairs(entities) do
-        v.id = nil
-        v.drawID = nil
     end
 
     love.filesystem.write(folder.."entities",binser.serialize(entities))
@@ -131,14 +132,11 @@ return {
                 local chunk = level.chunks[cx][cy]
                 local eic = level.entitiesInChunks[cx][cy]
                 if not chunk.spriteBatch then
-                    chunk.spriteBatch = {
-                        entity = love.graphics.newSpriteBatch(imageEntityPallete,5000,"stream"),
-                        item = love.graphics.newSpriteBatch(items.img,5000,"stream"),
-                    }
+                    utils.generateSpriteBatches(chunk)
                     for k, v in pairs(eic) do
                         local e = level.entities[k]
-                        if not (e.drawID or e.noBatch) then -- if not drawID, but also not noBatch
-                            e.drawID = chunk.spriteBatch[e.spriteBatchType]:add(e.customQuad or quadPallete[e.color or entityAtlas[e.name].color],e.x,e.y,nil,e.customQuadScaleW,e.customQuadScaleH)
+                        if e and not (e.drawID or e.noBatch) then -- if not drawID, but also not noBatch
+                            e.drawID = chunk.spriteBatch[e.spriteBatchType]:add(e.quad,e.x,e.y,e.r,e.customQuadScaleW,e.customQuadScaleH,e.ox,e.oy)
                         end
                     end
                 end
@@ -146,6 +144,7 @@ return {
                 
                 love.graphics.draw(chunk.spriteBatch.entity,tcx,tcy)
                 love.graphics.draw(chunk.spriteBatch.item,tcx,tcy)
+                love.graphics.draw(chunk.spriteBatch.tileitem,tcx,tcy)
             end
         end
 
@@ -193,12 +192,12 @@ return {
             end
             
             setColor(1,1,1)
-            if item and item.type == "item" then
-                local x,y,cx,cy = player.x+.5,player.y+.5,player.cx,player.cy
-                mtx,mty = mtx+mox%1-(cx-mcx)*level.mapSize,mty+moy%1-(cy-mcy)*level.mapSize
+            local x,y,cx,cy = player.x+.5,player.y+.5,player.cx,player.cy
+            mtx,mty = mtx+mox%1-(cx-mcx)*level.mapSize,mty+moy%1-(cy-mcy)*level.mapSize
 
-                local angle = -math.atan2(y-mty,mtx-x)
-                cam.handAngle = angle+0
+            local angle = -math.atan2(y-mty,mtx-x)
+            cam.handAngle = angle+0
+            if item and item.type == "item" then
                 local d = (angle-math.pi*3.5)%(-math.pi*2)+math.pi
                 d = d/math.abs(d)
                 local a = math.pi/4 --(180/4)
@@ -345,29 +344,96 @@ return {
                 })
             end
 
+            if key.throw then
+                local player = level.entities[playerID]
+                local i = utils.atInvPos(player.content,player.inHand)
+                local item = player.content[i]
+
+                if item then                    
+                    local angle = (cam.handAngle or 0)+0
+                    local player = level.entities[playerID]
+                    local entityID = utils.summonEntity("thrownItem",player.x+0,player.y+0,player.cx+0,player.cy+0,nil,nil,item)
+                    local entity = level.entities[entityID]
+                    local a,b = math.cos(angle),math.sin(angle)
+                    entity.vx,entity.vy = a+player.vx,b/2+player.vy
+                    entity.x,entity.y = entity.x+a,entity.y+b
+    
+                    item.amount = item.amount-1
+                    if item.amount<1 then
+                        table.remove(player.content,i)
+                    end
+                end
+    
+            end
+
             --local dt = math.ceil(now)-ticks
 
             UPDATEDENTITIESCOUNT = 0
 
-            --collision.resetCatche()
+            if ticks%(tps*60) == 0 then
+                collision.resetCatche() -- it can get full, right?
+            end 
             cam.entitiesToDraw = {}
             for i,cx,cy in cam.eachVisibleChunk() do
                 if level.entitiesInChunks[cx] and level.entitiesInChunks[cx][cy] and level.chunks[cx] and level.chunks[cx][cy] then
                     local chunk = level.chunks[cx][cy]
                     local eic = level.entitiesInChunks[cx][cy]
                     
+                    local entitycollision = {}
+                    local entityposcodes = {}
                     for k, v in pairs(eic) do
                         local entity = level.entities[k]
-                        local template = entityAtlas[entity.name]
-                        if template.draw then
-                            table.insert(cam.entitiesToDraw,k)
+                        if entity and entity.lastTick ~= ticks then   
+                            entity.lastTick = ticks+0
+                            local template = entityAtlas[entity.name]
+                            if template.draw then
+                                table.insert(cam.entitiesToDraw,k)
+                            end
+                            if template.update then
+                                template.update(level.entities[k])
+                            end
+                            if entity.isColliding then
+                                local x,y,w,h = entity.x,entity.y,entity.w,entity.h
+                                local xs, ys = math.halfFloor(x), math.halfFloor(y)
+                                local xe, ye = xs+w -(x%.5==0 and .5 or 0), ys+h -(y%.5==0 and .5 or 0)
+                                local rx = math.ceil(xe-xs+1)
+                                for ox = xs, xe, .5 do
+                                    for oy = ys, ye, .5 do
+                                        local a,b,c,d = utils.fixCoords(ox,oy,entity.cx,entity.cy)
+                                        local k = a.."_"..b.."_"..c.."_"..d
+                                        entitycollision[k] = entitycollision[k] or {}
+                                        entitycollision[k][entity.name] = entitycollision[k][entity.name] or {}
+                                        table.insert(entitycollision[k][entity.name],entity.id)
+    
+                                        entityposcodes[entity.id] = entityposcodes[entity.id] or {}
+                                        entityposcodes[entity.id][k] = true
+                                    end
+                                end
+                            end
+                            UPDATEDENTITIESCOUNT = UPDATEDENTITIESCOUNT+1
                         end
-                        if template.update then
-                            template.update(level.entities[k])
-                        end
-                        UPDATEDENTITIESCOUNT = UPDATEDENTITIESCOUNT+1
                     end
 
+                    for entityID, poscodes in pairs(entityposcodes) do
+                        local entity = level.entities[entityID]
+                        if entity and entity.onCollision then
+                            local e = {ALL={}}
+                            local already = {[entity.id]=true}
+                            for code, _ in pairs(poscodes) do
+                                for name, ids in pairs(entitycollision[code]) do
+                                    for i, id in ipairs(ids) do                                        
+                                        if not already[id] then
+                                            e[name] = e[name] or {}
+                                            table.insert(e[name],id)
+                                            table.insert(e.ALL,id)
+                                            already[id] = true
+                                        end
+                                    end
+                                end
+                            end
+                            entity:onCollision(e)
+                        end
+                    end
                 end
             end
 
@@ -402,16 +468,7 @@ return {
             placed = nil
         end
 
-        if key.throw then
-            local player = level.entities[playerID]
-            local item = player.content[utils.atInvPos(player.content,player.inHand)]
 
-            local angle = (cam.handAngle or 0)+0
-            local player = level.entities[playerID]
-            local entityID = utils.summonEntity("thrownItem",player.x+0,player.y+0,player.cx+0,player.cy+0,nil,nil,item)
-            local entity = level.entities[entityID]
-            entity.vx,entity.vy = math.cos(angle)*2,math.sin(angle)
-        end
         
         if not UNFOLLOWCAM then
             local entity = level.entities[playerID]
@@ -422,6 +479,31 @@ return {
         for i,cx,cy in cam.eachVisibleChunk() do -- load chunks
             utils.autoLoadChunk(cx,cy)
             utils.updateDrawableMap(cx,cy)
+            for type, amount in pairs(level.chunks[cx][cy].spriteBatchEscapes or {}) do
+                if amount>1000 then
+                    local check = {}
+                    for id, v in pairs(level.entitiesInChunks[cx][cy]) do
+                        local entity = level.entities[id]
+                        if (entity.spriteBatchType or "entity") == type then
+                            entity.drawID = nil
+                            table.insert(check,id)
+                        end 
+                    end
+                    if level.chunks[cx][cy].spriteBatch and level.chunks[cx][cy].spriteBatch[type] then
+                        level.chunks[cx][cy].spriteBatch[type]:release()
+                        level.chunks[cx][cy].spriteBatch[type] = nil
+                    end
+                    utils.generateSpriteBatches(level.chunks[cx][cy])
+                    level.chunks[cx][cy].spriteBatchEscapes[type] = 0
+
+                    for _, id in ipairs(check) do
+                        local entity = level.entities[id]
+                        entity.drawID = level.chunks[cx][cy].spriteBatch[entity.spriteBatchType]:add(entity.quad,entity.x,entity.y,entity.r,entity.customQuadScaleW,entity.customQuadScaleH,entity.ox,entity.oy)
+                    end
+
+                    print(type,cx,cy)
+                end
+            end
         end
         
         coroutine.resume(utils.stepUnloading)

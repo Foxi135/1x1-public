@@ -11,41 +11,7 @@ return function(last,arg)
         return x-x%.5+.5
     end
     
-    ColorPallete = {{0,0,0,0},{1,1,1,1},{1,0,0,1},{0,1,0,1},{.87,.87,.87,1},{0.55,0.32,0.22,1}}
-    renderShader = love.graphics.newShader([[    
-        #pragma language glsl3
-        uniform vec4 pallete[]]..#ColorPallete..[[];
-        uniform float mapSize;
-    
-        float unit = 1.0/mapSize;
 
-        uint findFirst1(uint x) {
-            return uint(log2(float(x & -x)));
-        }
-    
-        vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
-            uvec4 p = uvec4(floor(Texel(tex, texture_coords)*255)); //get colors in 255
-    
-            if (p.a==0u) discard;
-    
-            uvec2 pixelpos = uvec2(texture_coords.x*mapSize,texture_coords.y*mapSize); //set up model and 2x2 coords
-            uint model = p.b>>4;
-    
-            uint index = 0u;
-            index += (pixelpos.y % 2u)*2u + (pixelpos.x % 2u);
-    
-            if (((model>>index)&1u) == 1u) { //model
-                vec4 add = vec4(0,0,0,0);
-                if ((((p.r>>1)&1u) == 1u)&&(findFirst1(model)==index)) { //interactible mark
-                    add = vec4(0.25,0.25,0.25,0);
-                }
-                return pallete[p.g]+add;
-            }
-            discard;
-        }
-    ]])
-    renderShader:send("pallete",unpack(ColorPallete))
-    print("SHADER",renderShader)
     
     function getBits(number,start,len)
         return math.floor(number/(2^start)) % (2^len)
@@ -160,6 +126,9 @@ return function(last,arg)
     
     entityAtlas,entityColor = unpack(require "game/entities")
     entities = entities or {}
+
+
+
     
     utils.loadLevel(arg)
     

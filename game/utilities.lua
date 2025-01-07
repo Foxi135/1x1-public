@@ -62,6 +62,7 @@ function utils.generateChunk(cx,cy)
     level.chunks[cx] = level.chunks[cx] or {}
     level.chunks[cx][cy] = {}
     level.chunks[cx][cy].redraw = {}
+    level.chunks[cx][cy].spriteBatchEscapes = {}
     level.chunks[cx][cy].data = {}
     level.chunks[cx][cy].map = love.image.newImageData(level.mapSize,level.mapSize)
     level.chunks[cx][cy].mapDraw = love.graphics.newCanvas(level.mapSize*2,level.mapSize*2)
@@ -76,6 +77,7 @@ end
 function utils.loadChunkFromFile(cx,cy,path)
     level.chunks[cx] = level.chunks[cx] or {}
     level.chunks[cx][cy] = {}
+    level.chunks[cx][cy].spriteBatchEscapes = {}
     level.chunks[cx][cy].redraw = {}
     level.chunks[cx][cy].map = love.image.newImageData(path)
 
@@ -129,8 +131,6 @@ function utils.loadLevel(path)
 
     level.entities = binser.deserialize((love.filesystem.read(level.folder.."entities")))[1]
     level.entitiesInChunks = {}
-
-    print(#level.entities,"#ENTITIES")
 
     local entityAtlas = entityAtlas or require"game.entities"[1]
     for k, v in pairs(level.entities) do
@@ -263,20 +263,25 @@ function utils.summonEntity(name,x,y,_cx,_cy,w,h, signal)
 
     setmetatable(level.entities[i],utils.entityMetatable)
 
-
-
     local entity = level.entities[i]
     
     entity.id = i+0
 
     level.entitiesInChunks[cx][cy][i] = true
 
-    entity.noBatch = entityAtlas[name].noBatch
     if entityAtlas[name].summoned then
-        entityAtlas[name].summoned(entity,signal)
+        entity:summoned(signal)
     end
 
     return i
+end
+
+function utils.deleteEntity(id)
+    local entity = level.entities[id]
+    level.entitiesInChunks[entity.cx][entity.cy][id] = nil
+    level.chunks[entity.cx][entity.cy].spriteBatch[entity.spriteBatchType]:set(entity.drawID,0,0,0,0)
+    level.chunks[entity.cx][entity.cy].spriteBatchEscapes[entity.spriteBatchType] = (level.chunks[entity.cx][entity.cy].spriteBatchEscapes[entity.spriteBatchType] or 0)+1
+    level.entities[id] = nil
 end
 
 function utils.encodePosition(x,y,cx,cy)
@@ -345,11 +350,14 @@ local modelsGrouped = {
     [13]=1,[14]=1,[11]=1,[7]=1,
     [2]=2,[1]=2,[8]=2,[4]=2,
     [3]=3,[12]=3,[5]=3,[10]=3,
+    [6]=4,[9]=4,
 }
+utils.modelsGrouped = modelsGrouped
 local modelRotateGroups = {
     {14,13,7,11,offset=0},    --stairs
     {8,4,1,2,offset=0},       --bits
     {12,5,3,10,offset=-.25},  --slabs
+    {6,9},                    --checker
 }
 function utils.rotateModelTowards(model,angle)
     if modelsGrouped[model] then
@@ -370,6 +378,25 @@ utils.entityMetatable = {
         return entityAtlas[table.name][key] or entityAtlas.default[key]
     end
 }
+
+utils.sortContent = function(a,b)
+    return a.invpos<b.invpos
+end
+
+function utils.generateSpriteBatches(chunk)
+    if not chunk.spriteBatch then
+        chunk.spriteBatch = {}
+    end
+    if not chunk.spriteBatch.entity then
+        chunk.spriteBatch.entity = love.graphics.newSpriteBatch(imageEntityPallete,5000,"stream")
+    end
+    if not chunk.spriteBatch.item then
+        chunk.spriteBatch.item = love.graphics.newSpriteBatch(items.img,2000,"stream")
+    end    
+    if not chunk.spriteBatch.tileitem then
+        chunk.spriteBatch.tileitem = love.graphics.newSpriteBatch(tileBatchMap,2000,"stream")
+    end
+end
 
 --level.data[x.."_"..y.."_"..cx.."_"..cy]
 

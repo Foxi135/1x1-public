@@ -20,9 +20,9 @@ local manipulate = {
         end
         if chunk.spriteBatch and not entity.noBatch then
             if entity.drawID then
-                chunk.spriteBatch:set(entity.drawID,quadPallete[entityAtlas[entity.name].color],entity.x,entity.y,nil,.5*entity.w,.5*entity.h)
+                chunk.spriteBatch[entity.spriteBatchType]:set(entity.drawID,entity.quad,entity.x,entity.y,entity.r,entity.customQuadScaleW,entity.customQuadScaleH,entity.ox,entity.oy)
             else
-                entity.drawID = chunk.spriteBatch:add(quadPallete[entityAtlas[entity.name].color],entity.x,entity.y,nil,.5*entity.w,.5*entity.h)
+                entity.drawID = chunk.spriteBatch[entity.spriteBatchType]:add(entity.quad,entity.x,entity.y,entity.r,entity.customQuadScaleW,entity.customQuadScaleH,entity.ox,entity.oy)
             end
         end
     end,
@@ -31,7 +31,10 @@ local manipulate = {
             return
         end
         entity.moved = false
+        local _,_,cx,cy = utils.fixCoords(unpackPosition(entity))
+
         entity.x,entity.y,entity.cx,entity.cy = utils.fixCoords(unpackPosition(entity))
+
         local cx,cy = entity.cx,entity.cy
         local chunk = (level.chunks[cx] or {})[cy]
         if prevcx ~= cx or prevcy ~= cy then
@@ -41,14 +44,15 @@ local manipulate = {
             level.entitiesInChunks[cx][cy][entity.id] = true
             if entity.drawID and level.entitiesInChunks[prevcx] and level.entitiesInChunks[prevcx][prevcy] then
                 level.chunks[prevcx][prevcy].spriteBatch[entity.spriteBatchType]:set(entity.drawID,0,0,0,0)
+                chunk.spriteBatchEscapes[entity.spriteBatchType] = (chunk.spriteBatchEscapes[entity.spriteBatchType] or 0)+1
                 entity.drawID = nil
             end
         end
         if chunk.spriteBatch and not entity.noBatch then
             if entity.drawID then
-                chunk.spriteBatch[entity.spriteBatchType]:set(entity.drawID,entity.quad,entity.x,entity.y,nil,entity.customQuadScaleW,entity.customQuadScaleH)
+                chunk.spriteBatch[entity.spriteBatchType]:set(entity.drawID,entity.quad,entity.x,entity.y,entity.r,entity.customQuadScaleW,entity.customQuadScaleH,entity.ox,entity.oy)
             else
-                entity.drawID = chunk.spriteBatch[entity.spriteBatchType]:add(entity.quad,entity.x,entity.y,nil,entity.customQuadScaleW,entity.customQuadScaleH)
+                entity.drawID = chunk.spriteBatch[entity.spriteBatchType]:add(entity.quad,entity.x,entity.y,entity.r,entity.customQuadScaleW,entity.customQuadScaleH,entity.ox,entity.oy)
             end
         end
     end,
@@ -126,25 +130,70 @@ local entities = {
     default = {
         color = 1,
         w=1, h=1,
-        customQuadScaleW=.5, customQuadScaleH=.5, 
-        spriteBatchType = "entity"
+        customQuadScaleW=.5, customQuadScaleH=.5,
+        spriteBatchType = "entity",
     },
     test = {color=1},
     thrownItem = {
+        isColliding = true,
         color = 1,
+        w=.5, h=.5,
         customQuadScaleW=1/8, customQuadScaleH=1/8, 
         spriteBatchType = "item",
+
+        _convert = {
+            [0]=1,2,5,3,4
+        },
+
+        _rotat = {
+            { [14]={.5,0,2}, [13]={1,2,2}, [7]= {-.5,2,0} },
+            { [2]= {.5,0,2}, [8]= {1,2,2}, [4]= {-.5,2,0} },
+            { [3]= {.5,0,2}, [10]={1,2,2}, [12]={-.5,2,0} },
+            { [9]= {.5,0,2} },
+        },
 
         summoned = function(entity,item)
             entity.accx,entity.gravity = 0.05,0.05
             entity.gravity = 0.07
             entity.friction = 0.1
 
-            entity.item = item
+            entity.item = {
+                type = item.type.."",
+                code = (item.code and item.code+0) or nil,
+                id = (item.id and item.id+0) or nil,
+                durability = (item.durability and item.durability+0) or nil,
+            }
+            if item.type == "tile" then
+                entity.spriteBatchType = "tileitem"
+            end
+
         end,
         update = function(entity,dt)
             if not entity.customQuad then
-                entity.customQuad = items[entity.item.id].quad
+                if entity.item.type == "tile" then
+                    entity.customQuadScaleW = .25
+                    entity.customQuadScaleH = .25
+
+                    local m = pixel.getProperty(entity.item.code,"model")
+                    local g = utils.modelsGrouped[m] or 0
+
+                    entity.customQuad = tileBatchQuads[pixel.getProperty(entity.item.code,"color")+1][entityAtlas.thrownItem._convert[g]]
+                    
+                    local rotat = entityAtlas.thrownItem._rotat
+                    print(g,m)
+                    if rotat[g] and rotat[g][m] then
+                        local t = rotat[g][m]
+                        entity.r,entity.ox,entity.oy = t[1]*math.pi,t[2],t[3]
+                        print(entity.r,entity.ox,entity.oy)
+                    end
+                    if g == 0 then
+                        entity.customQuadScaleW = .5
+                        entity.customQuadScaleH = .5
+                    end
+                else
+                    entity.customQuad = items[entity.item.id].quad
+                    entity.ox,entity.oy = 2,2
+                end
             end
 
             local a,b = entity.cx+0,entity.cy+0
@@ -156,28 +205,26 @@ local entities = {
         
     },
     test2 = {color=2,
-        w=1,h=.5,
+        w=.5,h=.5,
+        customQuadScaleW = .25,
+        customQuadScaleH = .25,
         summoned = function(entity,signal)
             entity.accx,entity.gravity = 0.05,0.05
             entity.gravity = 0.07
             entity.friction = 0.1
-            
         end,
         update = function(entity,dt)
-            if not entity.customQuad then                
+            --[[if not entity.customQuad then                
                 entity.customQuad = love.graphics.newQuad(entityAtlas[entity.name].color*4-3,0,2,1,imageEntityPallete:getDimensions())
                 entity.customQuadScaleW = .5
                 entity.customQuadScaleH = 1
-            end
-
+            end]]
             local a,b = entity.cx+0,entity.cy+0
+
             manipulate.physicsY(entity)
             manipulate.physicsX(entity)
             
             entity.countdown = entity.countdown or 0
-
-
-            
             
             if entity.vy == entity.gravity then
                 if entity.countdown == 0 then
@@ -191,6 +238,7 @@ local entities = {
         end
     },
     player = {
+        isColliding = true,
         summoned = function(entity,signal)
             entity.vx,entity.vy = 0,0
             entity.friction = 0.3
@@ -273,6 +321,48 @@ local entities = {
             manipulate.updatePos(entity,a,b)
             --print(entity.moved,entity.vx,entity.x,entity.x-h)
             
+        end,
+        onCollision = function(self,with)
+            if not with.ALL[1] then return end
+
+            for k, v in pairs(with.thrownItem) do
+                local e = level.entities[v]
+                local result = nil
+                local found = false
+                for i = 1, 32 do --8*4 = 32
+                    local slot = self.content[i]
+                    if not slot then
+                        result = result or i
+                    end
+                    if slot and slot.amount<level.stackLimit and slot.type==e.item.type and slot.code==e.item.code and slot.id==e.item.id and ((not slot.durability) and not e.item.durability) then
+                        result = i
+                        found = true
+                        break
+                    end
+                end
+                local mininv
+                if not found then
+                    print("A")
+                    for i = 1, 32 do
+                        local slot = utils.atInvPos(self.content,i)
+                        if slot == 0 then
+                            mininv = i
+                            break
+                        end
+                    end
+                end
+                if result then
+                    if not self.content[result] then
+                        self.content[result] = e.item
+                        self.content[result].amount = 1
+                        self.content[result].invpos = mininv
+                        table.sort(self.content,utils.sortContent)
+                    else
+                        self.content[result].amount = self.content[result].amount+1
+                    end
+                    utils.deleteEntity(e.id)
+                end
+            end
         end
     },
 }
