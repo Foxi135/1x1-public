@@ -119,12 +119,6 @@ local manipulate = {
     end
 }
 
-function TEST()
-    for k,v in pairs(level.entitiesInChunks[-1][0]) do
-        print(level.entities[k].cx,level.entities[k].cy)
-    end
-end
-
 
 local entities = {
     default = {
@@ -180,11 +174,9 @@ local entities = {
                     entity.customQuad = tileBatchQuads[pixel.getProperty(entity.item.code,"color")+1][entityAtlas.thrownItem._convert[g]]
                     
                     local rotat = entityAtlas.thrownItem._rotat
-                    print(g,m)
                     if rotat[g] and rotat[g][m] then
                         local t = rotat[g][m]
                         entity.r,entity.ox,entity.oy = t[1]*math.pi,t[2],t[3]
-                        print(entity.r,entity.ox,entity.oy)
                     end
                     if g == 0 then
                         entity.customQuadScaleW = .5
@@ -342,7 +334,6 @@ local entities = {
                 end
                 local mininv
                 if not found then
-                    print("A")
                     for i = 1, 32 do
                         local slot = utils.atInvPos(self.content,i)
                         if slot == 0 then

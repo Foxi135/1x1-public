@@ -58,7 +58,7 @@ function utils.generateChunk(cx,cy)
                 if isn't modified (since loading from file or generated), remove from memory comepltely
             4 - save imagedatas into temporary 
     ]]
-            print(cx,cy)
+     print("generateChunk",cx,cy)
     level.chunks[cx] = level.chunks[cx] or {}
     level.chunks[cx][cy] = {}
     level.chunks[cx][cy].redraw = {}
@@ -80,7 +80,7 @@ function utils.loadChunkFromFile(cx,cy,path)
     level.chunks[cx][cy].spriteBatchEscapes = {}
     level.chunks[cx][cy].redraw = {}
     level.chunks[cx][cy].map = love.image.newImageData(path)
-
+    setColor(1,1,1)
     level.chunks[cx][cy].mapDraw = love.graphics.newCanvas(level.mapSize*2,level.mapSize*2)
     love.graphics.setCanvas(level.chunks[cx][cy].mapDraw)
     love.graphics.setBlendMode("replace","premultiplied")
@@ -94,14 +94,14 @@ function utils.loadChunkFromFile(cx,cy,path)
     level.activeChunks = level.activeChunks+1
 end
 
-function utils.loadChunkDataFromFile(cx,cy,path)
+--[[function utils.loadChunkDataFromFile(cx,cy,path)
     if not (level.chunks[cx] and level.chunks[cx][cy]) then
         error("Chunk is not loaded")
     end
     local file = binser.deserialize(love.filesystem.read(path))
     level.chunks[cx][cy].entities = file.entities
-    print(inspect(file))
-end
+    print("loadChunkDataFromFile",cx,cy,path)
+end]]
 
 function utils.unloadChunk(cx,cy)
     do
@@ -145,8 +145,6 @@ function utils.loadLevel(path)
         level.entities[k].noBatch = entityAtlas[v.name].noBatch
         level.entities[k].id = k
         setmetatable(level.entities[k],utils.entityMetatable)
-        print(level.entities[k].color)
-        print(inspect(v))
     end
     
     renderShader:send("mapSize",level.mapSize*2)

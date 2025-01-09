@@ -100,16 +100,6 @@ return function(last,arg)
     pixel.entity2 = love.graphics.newImage(pixel.entity2)
     
     
-    local P = pixel.big(0,0,0,0)
-    function TEST()
-        local t = {id=500,color=50,solid=1,opaque=0,mark=1,model=15,light=3}
-        for k, v in pairs(t) do
-            P = pixel.setProperty(P,k,v)
-        end
-        for k, v in pairs(t) do
-            print("TEST",pixel.getProperty(P,k),v)
-        end
-    end
     
     utils = require "game/utilities"
     require "game/chunks"
@@ -118,9 +108,11 @@ return function(last,arg)
 
     tiles,tilebyname = nil,nil
     do
+        print("REQUIRING TILES")
         local t = require "game/tiles"
         tiles = t[1]
         tilebyname = t[2]
+        t[3]()
     end
     items = require "game/items"
     
@@ -178,10 +170,7 @@ return function(last,arg)
 
     
     level.activeChunks = 0
-    
-    WHITETILE = {pixel.getColor(pixel.setProperty(pixel.setProperty(pixel.setProperty(pixel.big(0,0,0,0),"color",1),"model",15),"solid",1))}
-    EMPTY = {pixel.getColor(pixel.big(0,0,0,0))}
-    print(inspect(WHITETILE),WHITETILE[2]*255)
+
     
     for i = 1, 3 do
         clicked[i] = true

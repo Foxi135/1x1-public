@@ -572,7 +572,6 @@ function ui.mousemoved(processed,x,y)
     if not processed.events.mousemovedover then
         return
     end
-    print("a")
     local a,b = processed.translate(processed.w,processed.h,love.graphics.getWidth()/data.uiScale,love.graphics.getHeight()/data.uiScale)
     local mx,my = love.mouse.getX()/data.uiScale-a,love.mouse.getY()/data.uiScale-b
     if not inBox(mx,my,0,0,processed.w,processed.h) then

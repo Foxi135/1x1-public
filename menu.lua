@@ -7,7 +7,6 @@ function buttonFuncs.openWorldView(hold)
             menu = nil
             processed = nil
             parts.start("game",hold.."")
-            print(parts.loaded)
         end},
         {tag="button",label="delete",x=1,y=11,w=2},
         {tag="button",label="back",x=5,y=11,w=4,clicked=buttonFuncs.openWoldSelect},
@@ -172,7 +171,6 @@ return {
 
         cyclestart = love.timer.getTime()-cycleoffset
 
-        print(lastLoaded)
         fromIntro = lastLoaded == "intro"
 
         parts.entries.menu.resize(love.graphics.getDimensions())

@@ -501,7 +501,6 @@ return {
                         entity.drawID = level.chunks[cx][cy].spriteBatch[entity.spriteBatchType]:add(entity.quad,entity.x,entity.y,entity.r,entity.customQuadScaleW,entity.customQuadScaleH,entity.ox,entity.oy)
                     end
 
-                    print(type,cx,cy)
                 end
             end
         end
@@ -564,6 +563,7 @@ return {
                 end},
                 {tag="button",label="exit",y=6,clicked=function()
                     if showMessageBox("Do want to exit?",{"No","Yes"}) == 2 then
+                        renderShader:release()
                         clear("paused","cam","level","clicked","pixel","ColorPallete","renderShader","getBits","utils","collision","keyBinding","key","clicked","tps","ticks","tickStart","tiles","tilebyname","entityAtlas","entityColor","entities","playerID","imageEntityPallete","quadPallete") -- amaezing :)
                         parts.start("menu")
                     end
