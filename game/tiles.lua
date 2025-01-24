@@ -30,13 +30,14 @@ renderShader = love.graphics.newShader([[
     vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
         uvec4 p = uvec4(floor(Texel(tex, texture_coords)*255)); //get colors in 255
 
-        if (p.a==0u) discard;
+        if (p.a==0u) return vec4(0,0,0,0);
 
         uvec2 pixelpos = uvec2(texture_coords.x*mapSize,texture_coords.y*mapSize); //set up model and 2x2 coords
+        uvec2 tilepos = uvec2(floor(vec2(pixelpos)/2)*2u);
         uint model = p.b>>4;
 
         uint index = 0u;
-        index += (pixelpos.y % 2u)*2u + (pixelpos.x % 2u);
+        index += min(pixelpos.y - tilepos.y,1u)*2u + min(pixelpos.x - tilepos.x,1u);
 
         if (((model>>index)&1u) == 1u) { //model
             vec4 add = vec4(0,0,0,0);
@@ -45,7 +46,7 @@ renderShader = love.graphics.newShader([[
             }
             return pallete[p.g]+add;
         }
-        discard;
+        return vec4(0,0,0,0);
     }
 ]])
 renderShader:send("pallete",unpack(ColorPallete))
