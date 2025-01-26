@@ -6,6 +6,7 @@ function clear(...)
 		end
 	end
 end
+--love.system.openURL(love.filesystem.getSaveDirectory())
 function showMessageBox(message, buttonlist)
 	local result
 
@@ -161,7 +162,7 @@ function love.run()
 
 	lovebird:init()
 
-	parts.start("game","b")
+	parts.start("menu")
 
 	--[[love.filesystem.write("0_-1.bin",binser.serialize(
 		{
