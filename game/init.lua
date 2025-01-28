@@ -53,28 +53,12 @@ function saveWorld(level,folder)
 
 end
 
-local funnypauseshader = love.graphics.newShader([[    
-    #pragma language glsl3
-    uniform ivec2 dimensions;
 
-    int slope = 5;
-
-    vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
-        vec4 p = Texel(tex, texture_coords);
-        ivec2 pos = ivec2(texture_coords*dimensions);
-        int i = (pos.x+(pos.y%slope))%slope;
-        if (i == 0) {
-            return vec4(0,0,0,1);
-        }
-        return p*vec4(0.5,0.5,0.5,1);
-    }
-]])
 local funnyitemshader = stripesShader
 local cover;
 local function updatecover(ww,wh)
     local w,h = ww or love.graphics.getWidth(),wh or love.graphics.getHeight()
     cover = love.graphics.newCanvas(w,h)
-    funnypauseshader:send("dimensions",{w,h})
 end
 
 
@@ -87,7 +71,6 @@ local function drawPause(ww,wh)
     setColor(0,0,0,.5)
     love.graphics.rectangle("fill",0,0,w,h)
     love.graphics.setCanvas()
-    funnypauseshader:send("dimensions",{w,h})
 end
 
 function SETUP()
@@ -278,9 +261,11 @@ return {
         love.graphics.pop()
         
         if popup.active then
-            love.graphics.setShader(funnypauseshader)
-            setColor(0,0,0,0)
+            setColor(.5,.5,.5)
             love.graphics.draw(cover)
+            love.graphics.setShader(stripesShader)
+            setColor(0,0,0,1)
+            love.graphics.rectangle("fill",0,0,love.graphics.getDimensions())
             love.graphics.setShader()
             popup.draw()
         end

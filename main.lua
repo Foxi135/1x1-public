@@ -60,9 +60,7 @@ function showMessageBox(message, buttonlist)
 	return result
 end
 
-stripesShader = love.graphics.newShader([[    
-    #pragma language glsl3
-
+stripesShader = love.graphics.newShader([[
     int slope = 5;
 
     vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
@@ -72,7 +70,7 @@ stripesShader = love.graphics.newShader([[
             color.a = 1;
             s = -1;
         }
-        int i = int(pos.x+(pos.y%slope)*s)%slope;
+        int i = int(mod(int(pos.x+mod(pos.y,slope)*s),slope));
         if (i == 0) {
             return color;
         };
@@ -162,7 +160,7 @@ function love.run()
 
 	lovebird:init()
 
-	parts.start("menu")
+	parts.start("game","b")
 
 	--[[love.filesystem.write("0_-1.bin",binser.serialize(
 		{
