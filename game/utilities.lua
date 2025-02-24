@@ -66,8 +66,7 @@ function utils.generateChunk(cx,cy)
     level.chunks[cx][cy].data = {}
     level.chunks[cx][cy].map = love.image.newImageData(level.mapSize,level.mapSize)
     level.chunks[cx][cy].mapDraw = love.graphics.newCanvas(level.mapSize*2,level.mapSize*2)
-    level.chunks[cx][cy].lightDraw = love.graphics.newCanvas(level.mapSize*2,level.mapSize*2)
-    level.chunks[cx][cy].light = love.graphics.newCanvas(level.mapSize,level.mapSize)
+    level.chunks[cx][cy].lightDraw = love.graphics.newCanvas(level.mapSize,level.mapSize)
 
     level.activeChunks = level.activeChunks+1
 end
@@ -84,8 +83,7 @@ function utils.loadChunkFromFile(cx,cy,path)
     level.chunks[cx][cy].map = love.image.newImageData(path)
     setColor(1,1,1)
     level.chunks[cx][cy].mapDraw = love.graphics.newCanvas(level.mapSize*2,level.mapSize*2)
-    level.chunks[cx][cy].lightDraw = love.graphics.newCanvas(level.mapSize*2,level.mapSize*2)
-    level.chunks[cx][cy].light = love.graphics.newCanvas(level.mapSize,level.mapSize)
+    level.chunks[cx][cy].lightDraw = love.graphics.newCanvas(level.mapSize,level.mapSize)
     love.graphics.setCanvas(level.chunks[cx][cy].mapDraw)
     love.graphics.setBlendMode("replace","premultiplied")
     love.graphics.draw(love.graphics.newImage(path),0,0,nil,2)
