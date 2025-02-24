@@ -102,6 +102,7 @@ return {
         love.graphics.setShader()
 
 
+
         local minx = -cam.x-ww/cam.zoom/2-1
         local maxx = -cam.x+ww/cam.zoom/2
         local miny = -cam.y-wh/cam.zoom/2-1
@@ -128,6 +129,9 @@ return {
                 love.graphics.draw(chunk.spriteBatch.entity,tcx,tcy)
                 love.graphics.draw(chunk.spriteBatch.item,tcx,tcy)
                 love.graphics.draw(chunk.spriteBatch.tileitem,tcx,tcy)
+
+                light.draw(tcx,tcy,cx,cy)
+
             end
         end
 
@@ -136,12 +140,14 @@ return {
             entityAtlas[e.name].draw(e,e.x+(e.cx+cam.cx)*level.mapSize,e.y+(e.cy+cam.cy)*level.mapSize)
         end
 
-        local max;
-        for i,cx,cy in cam.eachVisibleChunk() do
-            max = i
-            local x,y = math.floor((cx+cam.cx)*level.mapSize),math.floor((cy+cam.cy)*level.mapSize)
-            love.graphics.rectangle("line",x,y,level.mapSize,level.mapSize)
-            love.graphics.print(string.format("%d %d %d",i,cx,cy),x+level.mapSize/2,y)
+        if data.debug then
+            local max;
+            for i,cx,cy in cam.eachVisibleChunk() do
+                max = i
+                local x,y = math.floor((cx+cam.cx)*level.mapSize),math.floor((cy+cam.cy)*level.mapSize)
+                love.graphics.rectangle("line",x,y,level.mapSize,level.mapSize)
+                love.graphics.print(string.format("%d %d %d",i,cx,cy),x+level.mapSize/2,y)
+            end
         end
 
         love.graphics.setLineWidth(1/cam.zoom)
@@ -270,17 +276,19 @@ return {
             popup.draw()
         end
 
-
-        love.graphics.print(table.concat({
-            "active chunks: "..level.activeChunks,
-            "fps: "..love.timer.getFPS(),
-            "entities: "..#level.entities,
-            "updating entities: "..UPDATEDENTITIESCOUNT,
-            "isColliding calls per tick: "..(PROTOTYPE or 0),
-        },"\n"))
+        if data.showstats then            
+            love.graphics.print(table.concat({
+                "active chunks: "..level.activeChunks,
+                "fps: "..love.timer.getFPS(),
+                "entities: "..#level.entities,
+                "updating entities: "..stats.updateEntities,
+            },"\n"))
+        end
 
     end,
     update = function(dt)
+        light.update(0,0)
+
         ww,wh = love.graphics.getDimensions()
 
         if key.rotate then
@@ -353,7 +361,7 @@ return {
 
             --local dt = math.ceil(now)-ticks
 
-            UPDATEDENTITIESCOUNT = 0
+            stats.updateEntities = 0
 
             if ticks%(tps*60) == 0 then
                 collision.resetCatche() -- it can get full, right?
@@ -395,7 +403,7 @@ return {
                                     end
                                 end
                             end
-                            UPDATEDENTITIESCOUNT = UPDATEDENTITIESCOUNT+1
+                            stats.updateEntities = stats.updateEntities+1
                         end
                     end
 

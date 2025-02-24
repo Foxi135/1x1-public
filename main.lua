@@ -160,7 +160,7 @@ function love.run()
 
 	lovebird:init()
 
-	parts.start("game","b")
+	parts.start("game","yes")
 
 	--[[love.filesystem.write("0_-1.bin",binser.serialize(
 		{

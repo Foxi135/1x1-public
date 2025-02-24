@@ -5,7 +5,6 @@ local CATCHE = {}
 return {
     isColliding = function(x,y,cx,cy,w,h,anySolid,catch) --anySolid should be true in physics function. for events it should be false. catch is passed in for physics too, before moving the player it checks what tiles player is in. this list will then be passed into this collision function
         local colliding = {}
-        PROTOTYPE = (PROTOTYPE or 0)+1 -- for counting, it is here just for debugging
 
         local xs, ys = hfloor(x), hfloor(y)
         local xe, ye = xs+w -(x%.5==0 and .5 or 0), ys+h -(y%.5==0 and .5 or 0)

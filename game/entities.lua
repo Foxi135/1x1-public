@@ -303,7 +303,6 @@ local entities = {
 
             local h = entity.x+0
 
-            PROTOTYPE = 0
 
             local skip = {}
 

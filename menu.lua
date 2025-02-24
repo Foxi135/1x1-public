@@ -281,9 +281,7 @@ return {
             },
             construct = {gridw=11,gridh=14,size=40,cascade={button={padding=4,text_size=2,y=12,w=4,h=1},label={text_size=2}},align="center",
                 {tag="label",label="select a world constructor",w=9,h=1,x=1,y=1,align="center"},
-                {tag="button",label="back",x=6,clicked=function()
-                    processed = {ui.process(menu.worlds)}
-                end},
+                {tag="button",label="back",x=6,clicked=buttonFuncs.openWoldSelect},
             },
             settings = {gridw=11,gridh=14,size=40,cascade={button={padding=4,text_size=2,y=12,w=4,h=1},label={text_size=2}},align="center",
                 {tag="label",label="settings",w=9,h=1,x=1,y=1,align="center"},
@@ -307,11 +305,37 @@ return {
                     end
                 end},
             },
-            settingsScroll = {gridw=10,gridh=10,size=40,cascade={button={padding=4,text_size=2,x=1,w=10,h=1},cycle={padding=4,text_size=2,x=1,w=10,h=1,cycle={true,false}},label={text_size=2,x=1,w=10,h=1}},align="center",hide_overflow=true,scrollY=true,
-                {tag="label",label="visual",x=0,y=0,align="center"},
-                {tag="cycle",label="Auto scale UI",x=0,y=1,text_size=2,w=10,h=1,id="AutoUiScale"},
-                {tag="cycle",label="Fullscreen",x=0,y=2,text_size=2,w=5,h=1,id="fullscreen"},
-                {tag="cycle",label="Vsync",x=5,y=2,text_size=2,w=5,h=1,id="vsync"},
+            settingsScroll = {gridw=10,gridh=10,size=40,cascade={button={padding=4,text_size=2,x=0,w=10,h=1},cycle={padding=4,text_size=2,x=0,w=10,h=1,cycle={true,false}},label={text_size=2,x=0,w=10,h=1,align="center"}},align="center",hide_overflow=true,scrollY=true,
+                unpack((function(t,cascade)
+                    local maxy_table = {[0]=0,0,0,0,0,0,0,0,0,0,0}
+
+                    local r = {}
+
+                    for k, v in pairs(t) do
+                        local s,w = v.x or cascade.x, v.w or cascade.w
+                        local maxy = 0
+                        for x = s+1, s+w do
+                            maxy = math.max(maxy_table[x],maxy)
+                        end
+                        maxy = maxy+1
+                        for x = s, s+w do
+                            maxy_table[x] = maxy
+                        end
+                        v.y = maxy
+                        table.insert(r,v)
+                    end
+
+                    return r
+                end)({
+                    {tag="label",label="visual"},
+                    {tag="cycle",label="Auto scale UI",id="AutoUiScale"},
+                    {tag="cycle",label="Fullscreen",   id="fullscreen",     w=5},
+                    {tag="cycle",label="Vsync",        id="vsync",      x=5,w=5},
+
+                    {tag="label",label="debug"},
+                    {tag="cycle",label="Extra draws",  id="debug"},
+                    {tag="cycle",label="Stats",        id="showstats"},
+                },{x=0,w=10}))
             }
         }
         processed = {ui.process(menu.main)}

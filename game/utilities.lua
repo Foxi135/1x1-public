@@ -58,7 +58,7 @@ function utils.generateChunk(cx,cy)
                 if isn't modified (since loading from file or generated), remove from memory comepltely
             4 - save imagedatas into temporary 
     ]]
-     print("generateChunk",cx,cy)
+    print("generateChunk",cx,cy)
     level.chunks[cx] = level.chunks[cx] or {}
     level.chunks[cx][cy] = {}
     level.chunks[cx][cy].redraw = {}
@@ -66,6 +66,8 @@ function utils.generateChunk(cx,cy)
     level.chunks[cx][cy].data = {}
     level.chunks[cx][cy].map = love.image.newImageData(level.mapSize,level.mapSize)
     level.chunks[cx][cy].mapDraw = love.graphics.newCanvas(level.mapSize*2,level.mapSize*2)
+    level.chunks[cx][cy].lightDraw = love.graphics.newCanvas(level.mapSize*2,level.mapSize*2)
+    level.chunks[cx][cy].light = love.graphics.newCanvas(level.mapSize,level.mapSize)
 
     level.activeChunks = level.activeChunks+1
 end
@@ -82,6 +84,8 @@ function utils.loadChunkFromFile(cx,cy,path)
     level.chunks[cx][cy].map = love.image.newImageData(path)
     setColor(1,1,1)
     level.chunks[cx][cy].mapDraw = love.graphics.newCanvas(level.mapSize*2,level.mapSize*2)
+    level.chunks[cx][cy].lightDraw = love.graphics.newCanvas(level.mapSize*2,level.mapSize*2)
+    level.chunks[cx][cy].light = love.graphics.newCanvas(level.mapSize,level.mapSize)
     love.graphics.setCanvas(level.chunks[cx][cy].mapDraw)
     love.graphics.setBlendMode("replace","premultiplied")
     love.graphics.draw(love.graphics.newImage(path),0,0,nil,2)
@@ -113,6 +117,8 @@ function utils.unloadChunk(cx,cy)
     
     level.chunks[cx][cy].map:release()
     level.chunks[cx][cy].mapDraw:release()
+    level.chunks[cx][cy].lightDraw:release()
+    level.chunks[cx][cy].light:release()
     level.chunks[cx][cy] = nil
     if not table.hasContent(level.chunks[cx]) then
         level.chunks[cx] = nil

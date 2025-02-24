@@ -32,7 +32,7 @@ popup.entries = {
                                 id     = v.id-1,
                                 color  = v.color,
                                 solid  = v.solid,
-                                opaque = v.opaqe,
+                                opaque = v.opaque,
                                 mark   = v.mark,
                                 light  = v.light,
                             },

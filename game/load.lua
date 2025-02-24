@@ -105,6 +105,7 @@ return function(last,arg)
     require "game/chunks"
     collision = require "game/collision"
     popup = require "game/popups"
+    light = require "game/light"
 
     tiles,tilebyname = nil,nil
     do
@@ -194,7 +195,7 @@ return function(last,arg)
 
     popup.entries.inventory.creative = popup.entries.inventory.initcreative{
         {id=2,color=2,solid=1,tilemodel={true,true,true,true}},
-        {id=1,color=1,solid=1,tilemodel={true,true,true,true}},
+        {id=1,color=1,solid=1,opaque=1,tilemodel={true,true,true,true}},
         {id=1,color=1,solid=1,tilemodel={false,true,true,false}},
         {id=1,color=1,solid=1,tilemodel={true,false,false,true}},
 
@@ -217,8 +218,16 @@ return function(last,arg)
         {id=1},{id=2},{id=3},{id=4},
         {id=5},
         {id=6},
+
+        {id=3,color=6,tilemodel={true,true,true,true}},
     }
 
     parts.entries.game.resize(love.graphics.getDimensions())
+
+    stats = {
+        updatedEntities = 0
+    }
+
+    light.createProcessCanvases()
 end
 
