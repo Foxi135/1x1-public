@@ -140,7 +140,7 @@ return function(glsl3code)
                         int ba = int(mod(a, 2));
                         int bb = int(mod(b, 2));
 
-                        result += (ba * bb) * n;
+                        result += int((ba * bb) * n);
 
                         a /= 2;
                         b /= 2;
@@ -158,7 +158,7 @@ return function(glsl3code)
                         int ba = int(mod(a, 2));
                         int bb = int(mod(b, 2));
 
-                        result += (max(ba, bb)) * n;
+                        result += int((max(ba, bb)) * n);
 
                         a /= 2;
                         b /= 2;
