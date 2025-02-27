@@ -74,7 +74,7 @@ stripesShader = love.graphics.newShader([[
         if (i == 0) {
             return color;
         };
-        discard;
+        return vec4(0,0,0,0);
     }
 ]])
 
@@ -160,7 +160,7 @@ function love.run()
 
 	lovebird:init()
 
-	parts.start("game","yes")
+	parts.start("game","no")
 
 	--[[love.filesystem.write("0_-1.bin",binser.serialize(
 		{

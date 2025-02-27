@@ -3,52 +3,49 @@ local maxLevel = light.maxLevel
 
 local resolveCompatibility = require "game.resolveShaders"
 
-light.shader.extractLight = love.graphics.newShader(resolveCompatibility([[
-    #pragma language glsl3
-
-    _ADDITIONAL_
-
+light.shader.extractLight = love.graphics.newShader([[
     vec4 effect(vec4 color, Image tex, vec2 coords, vec2 screen_coords) {
         vec4 pixel = Texel(tex, coords);
-        uint a = (uint(pixel.b*255) & uint(15));
-        return vec4(1,1,1,float(a)/255.0);
+        float a = mod(floor(pixel.b * 255.0),16);
+        return vec4(1.0,1.0,1.0, a / 255.0); //vec4(1.0,1.0,1.0,15.0 / 255.0);//vec4(1.0,1.0,1.0, a / 255.0);
     }
-]]))
+]])
 
 light.shader.render = love.graphics.newShader([[
     vec4 effect(vec4 color, Image tex, vec2 coords, vec2 screen_coords) {
         vec4 pixel = Texel(tex, coords);
-        return vec4(0,0,0,1-pixel.a*255.0/15.0);
+        return vec4(0.0,0.0,0.0,1.0 - pixel.a * 255.0 / 15.0);
     }
 ]])
 
-light.shader.solidMask = love.graphics.newShader(resolveCompatibility([[
-    #pragma language glsl3
-
-    _ADDITIONAL_
-
+light.shader.solidMask = love.graphics.newShader([[
     vec4 effect(vec4 color, Image tex, vec2 coords, vec2 screen_coords) {
         vec4 pixel = Texel(tex, coords);
-        int a = 1-((int(pixel.r*255.0) >> 2) & 1);
+        float a = 1.0 - mod(pixel.r * 255.0 / 4.0, 2);
         return vec4(a,a,a,a);
     }
-]]))
+]])
 
 light.shader.spreadLight = love.graphics.newShader([[
     uniform float width;
 
+    const vec2 off[4] = vec2[4](vec2(-1.0, 0.0), vec2(0.0, 1.0), vec2(1.0, 0.0), vec2(0.0, -1.0));
+
     vec4 effect(vec4 color, Image tex, vec2 coords, vec2 screen_coords) {
         vec4 pixel = Texel(tex, coords);
-        vec2 off[4] = vec2[4](vec2(-1,0),vec2(0,1),vec2(1,0),vec2(0,-1));
-        float maxa = pixel.a*255;
+        float maxa = pixel.a * 255.0;
+        
         for (int i = 0; i < 4; i++) {
-            maxa = max(maxa,Texel(tex, coords+off[i]/width).a*255.0 -1);
+            maxa = max(maxa, Texel(tex, coords + off[i] / width).a * 255.0 - 1.0);
         }
-        return vec4(1,1,1,maxa/255.0);
+
+        return vec4(1.0,1.0,1.0, maxa / 255.0);
     }
 ]])
 
-
+for k, v in pairs(light.shader) do
+    print(k.."\n"..v:getWarnings( ))
+end
 
 local canvas = {}
 
@@ -103,7 +100,7 @@ function light.update(cx,cy)
         love.graphics.setShader()
         if i~=maxLevel then
             love.graphics.setBlendMode("multiply","premultiplied")
-            love.graphics.draw(canvas[3])
+            --love.graphics.draw(canvas[3])
         end
     end
 
