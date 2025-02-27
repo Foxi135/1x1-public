@@ -1,27 +1,27 @@
 local light = {shader={},maxLevel = 15}
 local maxLevel = light.maxLevel
 
+
 local resolveCompatibility = require "game.resolveShaders"
 
 light.shader.extractLight = love.graphics.newShader([[
     vec4 effect(vec4 color, Image tex, vec2 coords, vec2 screen_coords) {
         vec4 pixel = Texel(tex, coords);
-        float a = mod(floor(pixel.b * 255.0),16);
-        return vec4(1.0,1.0,1.0, a / 255.0); //vec4(1.0,1.0,1.0,15.0 / 255.0);//vec4(1.0,1.0,1.0, a / 255.0);
+        float a = mod(pixel.b * 255.0, 16.0) / 255.0;
+        return vec4(1,1,1,a);
     }
 ]])
-
 light.shader.render = love.graphics.newShader([[
     vec4 effect(vec4 color, Image tex, vec2 coords, vec2 screen_coords) {
         vec4 pixel = Texel(tex, coords);
-        return vec4(0.0,0.0,0.0,1.0 - pixel.a * 255.0 / 15.0);
+        return vec4(0,0,0,1.0 - pixel.a *255.0/15.0);
     }
 ]])
 
 light.shader.solidMask = love.graphics.newShader([[
     vec4 effect(vec4 color, Image tex, vec2 coords, vec2 screen_coords) {
         vec4 pixel = Texel(tex, coords);
-        float a = 1.0 - mod(pixel.r * 255.0 / 4.0, 2);
+        float a = 1.0 - mod(floor(pixel.r*255.0/4.0), 2.0);
         return vec4(a,a,a,a);
     }
 ]])
@@ -36,7 +36,7 @@ light.shader.spreadLight = love.graphics.newShader([[
         float maxa = pixel.a * 255.0;
         
         for (int i = 0; i < 4; i++) {
-            maxa = max(maxa, Texel(tex, coords + off[i] / width).a * 255.0 - 1.0);
+            maxa = max(maxa, Texel(tex, coords + off[i]/width).a * 255.0 - 1.0);
         }
 
         return vec4(1.0,1.0,1.0, maxa / 255.0);
@@ -100,7 +100,7 @@ function light.update(cx,cy)
         love.graphics.setShader()
         if i~=maxLevel then
             love.graphics.setBlendMode("multiply","premultiplied")
-            --love.graphics.draw(canvas[3])
+            love.graphics.draw(canvas[3])
         end
     end
 

@@ -100,7 +100,6 @@ return function(last,arg)
     pixel.entity2 = love.graphics.newImage(pixel.entity2)
     
     
-    
     utils = require "game/utilities"
     require "game/chunks"
     collision = require "game/collision"
@@ -219,7 +218,7 @@ return function(last,arg)
         {id=5},
         {id=6},
 
-        {id=3,color=6,tilemodel={true,true,true,true}},
+        {id=3,color=6,light=15,tilemodel={true,true,true,true}},
     }
 
     parts.entries.game.resize(love.graphics.getDimensions())

@@ -78,6 +78,7 @@ stripesShader = love.graphics.newShader([[
     }
 ]])
 
+
 function love.run()
 	lovebird = require "lovebird"
 	inspect = require "inspect"
