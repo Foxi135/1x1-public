@@ -121,8 +121,15 @@ return function(last,arg)
 
 
 
-    
-    utils.loadLevel(arg)
+    local status,err = pcall(utils.loadLevel,arg)
+    if not status then
+        print(err)
+        if showMessageBox("Something went wrong while loading this world:\n\""..arg..'"',{"Close",love.graphics.print(err) or "Copy error and close"}) == 2 then
+            love.system.setClipboardText(err)
+        end
+        parts.start("menu")
+        return
+    end
     
     do
         if love.filesystem.getInfo("temp") then

@@ -6,6 +6,22 @@ end
 
 local fontscale = 3
 
+local fadeShader = love.graphics.newShader([[
+    int slope = 5;
+
+    vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
+        vec4 pixel = Texel(tex,texture_coords)*color;
+
+        ivec2 pos = ivec2(screen_coords);
+
+        int i = int(mod(int(pos.x+mod(pos.y,slope)),slope));
+        if (i == 0) {
+            return vec4(0,0,0,0);
+        };
+        return vec4(pixel.r,pixel.g,pixel.b,pixel.a/2);
+    }
+]])
+
 function ui.process(frame)
     local drawInstructions = {}
     local events = {}
@@ -95,6 +111,8 @@ function ui.draw(processed)
                 entireBox.h = math.max(h+y,entireBox.h)
             end
             if not (processed.hideOverflow and (x>processed.w or x<-w) and (y>processed.h or y<-h)) then
+
+
                 local hover;
                 if v.hover and not alreadyHovered then
                     if inBox(mx,my,x,y,w,h) then
@@ -102,10 +120,20 @@ function ui.draw(processed)
                         alreadyHovered = v.event
                     end
                 end
+
+                local isfunc = type(v.fade)=="function"
+                local fade = (isfunc and v.fade()) or (v.fade and not isfunc)
+                if fade then love.graphics.setShader(fadeShader) end
+
                 ui.drawElements[v[1]](v[2],v[3] and processed.dynamic[v[3]],hover,translateX,translateY)
+
+                if fade then love.graphics.setShader() end
             end
         end
+
+
     end
+
     entireBox = entireBox or processed.entireBox
     processed.entireBox = entireBox
 
@@ -375,6 +403,7 @@ ui.elements = {
             "button",
             {x,y,w,h,e.label.."",fontscale,o,e.textoffx or 0,e.color or {0,0,0,.2},e.hovercolor or {1,1,1,.2},e.linewidth or 1},
             hover = true,
+            fade = e.fade,
         },e.clicked and {
             click = e.clicked,
             box = {x,y,w,h},
@@ -391,12 +420,14 @@ ui.elements = {
                         
         local o = (h-fh*fontscale)/2
 
+
         return {
             "cycle",
             {x,y,w,h,e.label.."",o,fontscale,(e.textoffx or 0)+padding,e.color or {0,0,0,.2},e.hovercolor or {1,1,1,.2},e.linewidth or 1},
             dynamic = {option=(e.option or 1)+0,cycle=e.cycle},
             e.id,
-            hover = true
+            hover = true,
+            fade = e.fade,
         },{
             click = function(hold,dyn)
                 dyn.option = dyn.option%#dyn.cycle+1
@@ -455,7 +486,8 @@ ui.elements = {
             "input",
             {x,y,w,h,e.padding,fontscale,e.h+0},
             e.id,
-            dynamic = {field=field}
+            dynamic = {field=field},
+            fade = e.fade
         },{
             box={x+e.padding,y+e.padding,fw,fh},
             hold={FOCUSED=false},

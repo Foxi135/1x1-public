@@ -72,11 +72,12 @@ stripesShader = love.graphics.newShader([[
         }
         int i = int(mod(int(pos.x+mod(pos.y,slope)*s),slope));
         if (i == 0) {
-            return color;
+            return Texel(tex,texture_coords)*color;
         };
         return vec4(0,0,0,0);
     }
 ]])
+
 
 
 function love.run()
@@ -161,7 +162,7 @@ function love.run()
 
 	lovebird:init()
 
-	parts.start("game","no")
+	parts.start("game","yes")
 
 	--[[love.filesystem.write("0_-1.bin",binser.serialize(
 		{
@@ -188,6 +189,9 @@ function love.run()
 
 		dt = love.timer.step()
 		lovebird:update()
+		if data.AutoUiScale then
+			data.uiScale = math.max(1,math.floor(math.min(love.graphics.getDimensions())/(12*40)*2)/2)
+		end
 		if scene.update then scene.update(dt) end
 
 		if love.graphics.isActive() then

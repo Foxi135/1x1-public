@@ -97,10 +97,12 @@ return {
             if level.chunks[cx] and level.chunks[cx][cy] then
                 local x,y = math.floor((cx+cam.cx)*level.mapSize),math.floor((cy+cam.cy)*level.mapSize)
                 love.graphics.draw(level.chunks[cx][cy].mapDraw,x,y,nil,.5)
+
             end
         end
         love.graphics.setShader()
-
+        
+        
 
 
         local minx = -cam.x-ww/cam.zoom/2-1
@@ -129,9 +131,6 @@ return {
                 love.graphics.draw(chunk.spriteBatch.entity,tcx,tcy)
                 love.graphics.draw(chunk.spriteBatch.item,tcx,tcy)
                 love.graphics.draw(chunk.spriteBatch.tileitem,tcx,tcy)
-
-                light.draw(tcx,tcy,cx,cy)
-
             end
         end
 
@@ -139,6 +138,18 @@ return {
             local e = level.entities[v]
             entityAtlas[e.name].draw(e,e.x+(e.cx+cam.cx)*level.mapSize,e.y+(e.cy+cam.cy)*level.mapSize)
         end
+
+        love.graphics.setBlendMode("multiply","premultiplied")
+
+        for i,cx,cy in cam.eachVisibleChunk() do
+            if level.chunks[cx] and level.chunks[cx][cy] and level.chunks[cx][cy].lightDraw then
+                local tcx,tcy = math.floor((cx+cam.cx)*level.mapSize),math.floor((cy+cam.cy)*level.mapSize)
+                love.graphics.draw(level.chunks[cx][cy].lightDraw,tcx,tcy)
+            end
+        end
+
+        love.graphics.setBlendMode("alpha","alphamultiply")
+
 
         if data.debug then
             local max;
@@ -196,7 +207,7 @@ return {
                 if player.usingItemAnim then
                     local t = data.swingLen+0
                     local b = math.pi*2 *data.swingAngle*d         -- 360 *swingAngle*d (-1 or 1)
-                    angle = angle+b/2-b*(love.timer.getTime()%t)/t --       (0 to 1)     
+                    angle = angle+b/2-b*(love.timer.getTime()%t)/t --      ^(0 to 1)     
                     player.usingItemAnim = false
                 end
                 
@@ -287,8 +298,6 @@ return {
 
     end,
     update = function(dt)
-        light.update(0,0)
-
         ww,wh = love.graphics.getDimensions()
 
         if key.rotate then
@@ -462,6 +471,8 @@ return {
         end
 
 
+
+
         
         if not UNFOLLOWCAM then
             local entity = level.entities[playerID]
@@ -472,6 +483,7 @@ return {
         for i,cx,cy in cam.eachVisibleChunk() do -- load chunks
             utils.autoLoadChunk(cx,cy)
             utils.updateDrawableMap(cx,cy)
+
             for type, amount in pairs(level.chunks[cx][cy].spriteBatchEscapes or {}) do
                 if amount>1000 then
                     local check = {}
@@ -496,7 +508,17 @@ return {
 
                 end
             end
+
         end
+
+        for i,cx,cy in cam.eachVisibleChunk() do -- load chunks
+            if level.chunks[cx][cy].lightUpdate then
+                level.chunks[cx][cy].lightUpdate = false
+                light.update(cx,cy)
+            end
+        end
+
+
         
         coroutine.resume(utils.stepUnloading)
     end,
@@ -618,9 +640,6 @@ return {
     end,
     resize = function(ww,wh)
         updatecover(ww,wh)
-        if data.AutoUiScale then
-            data.uiScale = math.max(1,math.floor(math.min(ww,wh)/(10*40)))
-        end
     end,
     event = function(...) if popup.active then popup.event(...) end end
 }

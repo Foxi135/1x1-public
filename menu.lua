@@ -328,7 +328,8 @@ return {
                     return r
                 end)({
                     {tag="label",label="visual"},
-                    {tag="cycle",label="Auto scale UI",id="AutoUiScale"},
+                    {tag="cycle",label="Auto scale UI",id="AutoUiScale",    w=6},
+                    {tag="cycle",label="UI scale",     id="uiScale",    x=6,w=4, cycle={1,1.5,2}, fade=function() return processed[2].dynamic["AutoUiScale"].option==1 end},
                     {tag="cycle",label="Fullscreen",   id="fullscreen",     w=5},
                     {tag="cycle",label="Vsync",        id="vsync",      x=5,w=5},
 
@@ -413,9 +414,6 @@ return {
         end
     end,
     resize = function(ww,wh)
-        if data.AutoUiScale then
-            data.uiScale = math.max(1,math.floor(math.min(ww,wh)/(10*40)))
-        end
         genBG()
     end,
     close = function()

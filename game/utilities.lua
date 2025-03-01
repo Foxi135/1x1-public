@@ -67,6 +67,10 @@ function utils.generateChunk(cx,cy)
     level.chunks[cx][cy].map = love.image.newImageData(level.mapSize,level.mapSize)
     level.chunks[cx][cy].mapDraw = love.graphics.newCanvas(level.mapSize*2,level.mapSize*2)
     level.chunks[cx][cy].lightDraw = love.graphics.newCanvas(level.mapSize,level.mapSize)
+    level.chunks[cx][cy].sunLight = love.graphics.newCanvas(level.mapSize,level.mapSize)
+
+    light.update(cx,cy)
+    light.generateNewSunLight(cx,cy)
 
     level.activeChunks = level.activeChunks+1
 end
@@ -84,6 +88,7 @@ function utils.loadChunkFromFile(cx,cy,path)
     setColor(1,1,1)
     level.chunks[cx][cy].mapDraw = love.graphics.newCanvas(level.mapSize*2,level.mapSize*2)
     level.chunks[cx][cy].lightDraw = love.graphics.newCanvas(level.mapSize,level.mapSize)
+    level.chunks[cx][cy].sunLight = love.graphics.newCanvas(level.mapSize,level.mapSize)
     love.graphics.setCanvas(level.chunks[cx][cy].mapDraw)
     love.graphics.setBlendMode("replace","premultiplied")
     love.graphics.draw(love.graphics.newImage(path),0,0,nil,2)
@@ -92,6 +97,9 @@ function utils.loadChunkFromFile(cx,cy,path)
     level.chunks[cx][cy].tempFile = "temp/"..cx.."_"..cy
     level.chunks[cx][cy].fromFile = true
     level.chunks[cx][cy].modified = false
+
+    light.update(cx,cy)
+    light.generateNewSunLight(cx,cy)
 
     level.activeChunks = level.activeChunks+1
 end
@@ -116,7 +124,8 @@ function utils.unloadChunk(cx,cy)
     level.chunks[cx][cy].map:release()
     level.chunks[cx][cy].mapDraw:release()
     level.chunks[cx][cy].lightDraw:release()
-    level.chunks[cx][cy].light:release()
+    level.chunks[cx][cy].sunLight:release()
+    
     level.chunks[cx][cy] = nil
     if not table.hasContent(level.chunks[cx]) then
         level.chunks[cx] = nil
@@ -126,6 +135,13 @@ end
 
 function utils.loadLevel(path)
     level = {folder="worlds/"..path.."/"}
+
+    if not love.filesystem.getInfo(level.folder) then
+        showMessageBox(level.folder.."\ndoesn't exist",{"OK"})
+        parts.start("menu")
+        return 1
+    end
+
     local info = json.decode(love.filesystem.read(level.folder.."info.json"))
 
     level.mapSize = info.mapSize
@@ -154,7 +170,6 @@ function utils.loadLevel(path)
     renderShader:send("mapSize",level.mapSize*2)
 end
 
-
 function utils.placetile(ix,iy,icx,icy,colorCode)
     love.graphics.setShader()
     local x,y,cx,cy = utils.fixCoords(ix,iy,icx,icy)
@@ -163,21 +178,35 @@ function utils.placetile(ix,iy,icx,icy,colorCode)
     chunk.map:setPixel(x,y,colorCode)
     chunk.modified = true
     collision.removeFromCatche(x,y,cx,cy)
+    
+    chunk.lightUpdate = true
+
+    for i = 0,7 do
+        local a = i/4*math.pi
+        local nx,ny = math.cos(a)*15+x,math.sin(a)*15+y
+        local _,_,ncx,ncy = utils.fixCoords(nx,ny,cx,cy)
+        if (not (cx == ncx and cy == ncy)) and level.chunks[ncx] and level.chunks[ncx][ncy] then
+            level.chunks[ncx][ncy].lightUpdate = true
+            print("B",ncx,ncy)
+        end
+    end
 end
 
 function utils.updateDrawableMap(cx,cy)
     local chunk = level.chunks[cx][cy]
-    if not table.hasContent(chunk.redraw) then
-        return
+
+    if table.hasContent(chunk.redraw) then
+        love.graphics.setCanvas(chunk.mapDraw)
+        love.graphics.setBlendMode("replace","premultiplied")
+        for k, v in pairs(chunk.redraw) do
+            setColor(v[3])
+            love.graphics.draw(pixel.pixel,v[1]*2,v[2]*2)
+        end
+        love.graphics.setCanvas()
+        level.chunks[cx][cy].redraw = {}
     end
-    love.graphics.setCanvas(chunk.mapDraw)
-    love.graphics.setBlendMode("replace","premultiplied")
-    for k, v in pairs(chunk.redraw) do
-        setColor(v[3])
-        love.graphics.draw(pixel.pixel,v[1]*2,v[2]*2)
-    end
-    love.graphics.setCanvas()
-    level.chunks[cx][cy].redraw = {}
+
+
 end
 
 function utils.isVisible(cx,cy)
