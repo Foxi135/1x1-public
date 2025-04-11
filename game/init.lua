@@ -37,7 +37,7 @@ function saveWorld(level,folder)
             local file love.filesystem.read("temp/"..v)
             file = binser:decode(file)
             if file.data then
-                print("bah") -- todo
+                print("FILE.DATA PLACEHOLDER: game/init.lua") -- todo
             end
         end
     end
@@ -90,6 +90,17 @@ return {
         love.graphics.scale(cam.zoom)
 
         
+        setColor(0,0,1)
+        love.graphics.setBlendMode("replace","premultiplied")
+        love.graphics.setShader(light.shader.sunShader)
+        for i,cx,cy in cam.eachVisibleChunk() do
+            if level.chunks[cx] and level.chunks[cx][cy] then
+                local x,y = math.floor((cx+cam.cx)*level.mapSize),math.floor((cy+cam.cy)*level.mapSize)
+                love.graphics.draw(level.chunks[cx][cy].sunLight,x,y,nil,1,level.mapSize)
+            end
+        end
+        love.graphics.setShader()
+
         setColor(1,1,1)
         love.graphics.setBlendMode("alpha","alphamultiply")
         love.graphics.setShader(renderShader)

@@ -67,9 +67,17 @@ function utils.generateChunk(cx,cy)
     level.chunks[cx][cy].map = love.image.newImageData(level.mapSize,level.mapSize)
     level.chunks[cx][cy].mapDraw = love.graphics.newCanvas(level.mapSize*2,level.mapSize*2)
     level.chunks[cx][cy].lightDraw = love.graphics.newCanvas(level.mapSize,level.mapSize)
-    level.chunks[cx][cy].sunLight = love.graphics.newCanvas(level.mapSize,level.mapSize)
+    level.chunks[cx][cy].sunLight = love.graphics.newCanvas(level.mapSize,1)
 
     light.update(cx,cy)
+    for x = -1, 1 do
+        for y = -1, 1 do
+            if (level.chunks[cx+x] or {})[cy+y] and utils.isVisible(cx+x,cy+y) then
+                level.chunks[cx+x][cy+y].lightUpdate = true
+            end
+        end
+    end
+
     light.generateNewSunLight(cx,cy)
 
     level.activeChunks = level.activeChunks+1
@@ -88,7 +96,7 @@ function utils.loadChunkFromFile(cx,cy,path)
     setColor(1,1,1)
     level.chunks[cx][cy].mapDraw = love.graphics.newCanvas(level.mapSize*2,level.mapSize*2)
     level.chunks[cx][cy].lightDraw = love.graphics.newCanvas(level.mapSize,level.mapSize)
-    level.chunks[cx][cy].sunLight = love.graphics.newCanvas(level.mapSize,level.mapSize)
+    level.chunks[cx][cy].sunLight = love.graphics.newCanvas(level.mapSize,1)
     love.graphics.setCanvas(level.chunks[cx][cy].mapDraw)
     love.graphics.setBlendMode("replace","premultiplied")
     love.graphics.draw(love.graphics.newImage(path),0,0,nil,2)
@@ -125,6 +133,8 @@ function utils.unloadChunk(cx,cy)
     level.chunks[cx][cy].mapDraw:release()
     level.chunks[cx][cy].lightDraw:release()
     level.chunks[cx][cy].sunLight:release()
+    
+    level.chunks[cx][cy].sunLightArray = nil
     
     level.chunks[cx][cy] = nil
     if not table.hasContent(level.chunks[cx]) then
@@ -170,6 +180,10 @@ function utils.loadLevel(path)
     renderShader:send("mapSize",level.mapSize*2)
 end
 
+function utils.chunkExists(cx,cy)
+    return (level.chunks[cx] or {})[cy]
+end
+
 function utils.placetile(ix,iy,icx,icy,colorCode)
     love.graphics.setShader()
     local x,y,cx,cy = utils.fixCoords(ix,iy,icx,icy)
@@ -187,7 +201,28 @@ function utils.placetile(ix,iy,icx,icy,colorCode)
         local _,_,ncx,ncy = utils.fixCoords(nx,ny,cx,cy)
         if (not (cx == ncx and cy == ncy)) and level.chunks[ncx] and level.chunks[ncx][ncy] then
             level.chunks[ncx][ncy].lightUpdate = true
-            print("B",ncx,ncy)
+            --print("B",ncx,ncy)
+        end
+    end
+    
+    local a = cx
+    local b = 0
+    if x<=light.maxLevel then
+        b = -1
+    elseif x>=level.mapSize-light.maxLevel then
+        b = 1
+    end
+    print("B",a,b+a)
+
+    for ncx = a,a+b,b+1-math.abs(b) do        
+        local ncy = cy+0
+        while true do
+            ncy = ncy+1
+            if not (utils.chunkExists(ncx,ncy) and utils.isVisible(ncx,ncy)) then
+                break
+            else
+                level.chunks[ncx][ncy].lightUpdate = true
+            end
         end
     end
 end

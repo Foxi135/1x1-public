@@ -199,6 +199,7 @@ function love.run()
 			love.graphics.clear(love.graphics.getBackgroundColor())
 			
 			if scene.draw then scene.draw() end
+			if love.draw then love.draw() end
 
 			love.graphics.present()
 		end

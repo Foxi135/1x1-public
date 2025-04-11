@@ -28,7 +28,7 @@ light.shader.render = love.graphics.newShader([[
         }
 
         float a = maxa /15.0;
-        return vec4(a,a,a,1);
+        return vec4(a,a,a,1.0);
     }
 ]])
 
@@ -57,6 +57,33 @@ light.shader.spreadLight = love.graphics.newShader([[
     }
 ]])
 
+light.shader.sunLightStrips = love.graphics.newShader([[
+    uniform float width;
+
+    float a = 15.0/255.0;
+
+    vec4 effect(vec4 color, Image tex, vec2 coords, vec2 screen_coords) {
+        vec4 pixel = Texel(tex, coords);
+        if (pixel.b == 1) {return vec4(0.0,0.0,0.0,0.0);}
+        if (pixel.g != 0.0 && pixel.r*255.0*255.0+pixel.g*255.0-1.0 < coords.y*width) {return vec4(0.0,0.0,0.0,0.0);}
+        return vec4(1.0,1.0,1.0, a);
+    }
+]])
+
+
+light.shader.sunShader = love.graphics.newShader([[
+    uniform float width;
+
+    vec4 bg = vec4(1,1,1,1)*0.2;
+
+    vec4 effect(vec4 color, Image tex, vec2 coords, vec2 screen_coords) {
+        vec4 pixel = Texel(tex, coords);
+        if (pixel.b == 1) {return bg;}
+        if (pixel.g != 0.0 && pixel.r*255.0*255.0+pixel.g*255.0-1.0 < coords.y*width) {return bg;}
+        return color;
+    }
+]])
+
 
 
 local canvas = {}
@@ -68,14 +95,17 @@ function light.createProcessCanvases()
     end
     light.shader.spreadLight:send("width",canvas[1]:getWidth())
     light.shader.render:send("width",canvas[1]:getWidth())
+    light.shader.sunLightStrips:send("width",level.mapSize)
+    light.shader.sunShader:send("width",level.mapSize)
 end
 
 local lastcx,lastcy
 
 function light.update(cx,cy)
-    print(cx,cy)
-
+    --print(cx,cy)
+    
     if not level.chunks[cx] or not level.chunks[cx][cy] then return end
+    light.generateNewSunLight(cx,cy)
     setColor(1,1,1)
 
     local blendmode,premultiplied = love.graphics.getBlendMode()
@@ -105,6 +135,18 @@ function light.update(cx,cy)
                 end
             end
         end
+        love.graphics.setShader(light.shader.sunLightStrips)
+        love.graphics.setBlendMode("lighten","premultiplied")
+        for x = -1, 1 do
+            for y = -1, 0 do
+                if level.chunks[x+cx] and level.chunks[x+cx][y+cy] then
+                    love.graphics.draw(level.chunks[x+cx][y+cy].sunLight,maxLevel+level.mapSize*x,maxLevel+level.mapSize*y,nil,1,level.mapSize)
+                end
+            end
+        end
+        love.graphics.setCanvas()
+
+        --require"nativefs".write("jhadshkb.png",canvas[1]:newImageData():encode("png"))
 
         --lastcx,lastcy = cx+0,cy+0
     end
@@ -135,8 +177,42 @@ function light.update(cx,cy)
 end
 
 function light.generateNewSunLight(cx,cy)
-    
+    local sunLightArray = {}
+    local sunLightArrayAbove = (level.chunks[cx][cy-1] or {}).sunLightArray or {}
+    local map = level.chunks[cx][cy].map
+    local sunLight = level.chunks[cx][cy].sunLight
+    love.graphics.setCanvas(sunLight)
+    for x = 0, level.mapSize-1 do
+        love.graphics.setShader()
+        local min = 0
+        for y = 0, level.mapSize-1 do
+            if pixel.getProperty(pixel.big(map:getPixel(x,y)),"solid") == 1 then -- CHANGE SOLID TO OPAQUE
+                min = y+1
+                break
+            end
+        end
+        local b = ((sunLightArrayAbove[x] or 0) == 0) and 0 or 1
+        setColor(math.floor(min/255)/255,(min%255)/255,b,1)
+        sunLightArray[x] = min+(level.mapSize+1)*b
+        love.graphics.draw(pixel.pixel,x,0)
+    end
+    love.graphics.setCanvas()
+    level.chunks[cx][cy].sunLightArray = sunLightArray
 end
+
+
+
+
+function love._draw()
+    if parts.loaded ~= "game" then return end
+    local cx,cy = -1,0
+    love.graphics.setBlendMode("replace","premultiplied")
+    love.graphics.setShader(light.shader.sunLightStrips)
+    love.graphics.draw(level.chunks[cx][cy].sunLight,0,0,nil,1,level.mapSize)
+
+end
+
+
 
 
 return light
