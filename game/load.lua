@@ -207,7 +207,7 @@ return function(last,arg)
 
     popup.entries.inventory.creative = popup.entries.inventory.initcreative{
         {id=2,color=2,solid=1,tilemodel={true,true,true,true}},
-        {id=1,color=1,solid=1,opaque=1,tilemodel={true,true,true,true}},
+        {id=1,color=1,solid=1,tilemodel={true,true,true,true},opaque=1},
         {id=1,color=1,solid=1,tilemodel={false,true,true,false}},
         {id=1,color=1,solid=1,tilemodel={true,false,false,true}},
 

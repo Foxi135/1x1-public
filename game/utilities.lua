@@ -114,22 +114,27 @@ function utils.loadChunkFromFile(cx,cy,path)
     level.chunks[cx][cy].fromFile = true
     level.chunks[cx][cy].modified = false
 
-    if level.chunks[cx][cy-1] and level.chunks[cx][cy-1].sunLightArray then
-        local sunlightdata = level.chunks[cx][cy].sunLight:newImageData()
-        local above = level.chunks[cx][cy-1].sunLightArray
-        for i = 0, level.mapSize-1 do
-            local r,g,b = sunlightdata:getPixel(i,0)
-            b = math.min(1,above[i])
-            level.chunks[cx][cy].sunLightArray[i] = r*255*255 + g*255 + b*(level.mapSize+1)
-            level.chunks[cx][cy].sunLightQue[i] = {update=true}
-        end
+    if imgmap:getHeight() == imgmap:getWidth() then
+        light.generateNewSunLight(cx,cy)
     else
-        local sunlightdata = level.chunks[cx][cy].sunLight:newImageData()
-        for i = 0, level.mapSize-1 do
-            local r,g,b = sunlightdata:getPixel(i,0)
-            level.chunks[cx][cy].sunLightArray[i] = r*255*255 + g*255 + b*(level.mapSize+1)
+        if level.chunks[cx][cy-1] and level.chunks[cx][cy-1].sunLightArray then
+            local sunlightdata = level.chunks[cx][cy].sunLight:newImageData()
+            local above = level.chunks[cx][cy-1].sunLightArray
+            for i = 0, level.mapSize-1 do
+                local r,g,b = sunlightdata:getPixel(i,0)
+                b = math.min(1,above[i])
+                level.chunks[cx][cy].sunLightArray[i] = r*255*255 + g*255 + b*(level.mapSize+1)
+                level.chunks[cx][cy].sunLightQue[i] = {update=true}
+            end
+        else
+            local sunlightdata = level.chunks[cx][cy].sunLight:newImageData()
+            for i = 0, level.mapSize-1 do
+                local r,g,b = sunlightdata:getPixel(i,0)
+                level.chunks[cx][cy].sunLightArray[i] = r*255*255 + g*255 + b*(level.mapSize+1)
+            end
         end
     end
+
 
 
     --light.generateNewSunLight(cx,cy)
@@ -261,7 +266,7 @@ function utils.placetile(ix,iy,icx,icy,colorCode)
 
     level.chunks[cx][cy].sunLightQue[x] = level.chunks[cx][cy].sunLightQue[x] or {}
     local t = level.chunks[cx][cy].sunLightQue[x]
-    if pixel.getProperty(pixel.big(unpack(colorCode)),"solid") == 1 then
+    if pixel.getProperty(pixel.big(unpack(colorCode)),"opaque") == 1 then
         t.place = math.min(t.place or math.huge,y+1)+0
     elseif y == (level.chunks[cx][cy].sunLightArray[x]%(level.mapSize+1))-1 then
         t.unplace = y+1

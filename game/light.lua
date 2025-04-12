@@ -225,7 +225,7 @@ end
 function light.scanSunColumn(x,map,sunLightArray,sunLightArrayAbove)
     local min = 0
     for y = 0, level.mapSize-1 do
-        if pixel.getProperty(pixel.big(map:getPixel(x,y)),"solid") == 1 then -- CHANGE SOLID TO OPAQUE
+        if pixel.getProperty(pixel.big(map:getPixel(x,y)),"opaque") == 1 then
             min = y+1
             break
         end
