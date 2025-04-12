@@ -68,7 +68,9 @@ function utils.generateChunk(cx,cy)
     level.chunks[cx][cy].mapDraw = love.graphics.newCanvas(level.mapSize*2,level.mapSize*2)
     level.chunks[cx][cy].lightDraw = love.graphics.newCanvas(level.mapSize,level.mapSize)
     level.chunks[cx][cy].sunLight = love.graphics.newCanvas(level.mapSize,1)
+    level.chunks[cx][cy].sunLightQue = {}
 
+    light.generateNewSunLight(cx,cy)
     light.update(cx,cy)
     for x = -1, 1 do
         for y = -1, 1 do
@@ -78,7 +80,6 @@ function utils.generateChunk(cx,cy)
         end
     end
 
-    light.generateNewSunLight(cx,cy)
 
     level.activeChunks = level.activeChunks+1
 end
@@ -97,17 +98,42 @@ function utils.loadChunkFromFile(cx,cy,path)
     level.chunks[cx][cy].mapDraw = love.graphics.newCanvas(level.mapSize*2,level.mapSize*2)
     level.chunks[cx][cy].lightDraw = love.graphics.newCanvas(level.mapSize,level.mapSize)
     level.chunks[cx][cy].sunLight = love.graphics.newCanvas(level.mapSize,1)
+    level.chunks[cx][cy].sunLightQue = {}
+    level.chunks[cx][cy].sunLightArray = {}
+
+
+    local imgmap = love.graphics.newImage(path)
     love.graphics.setCanvas(level.chunks[cx][cy].mapDraw)
     love.graphics.setBlendMode("replace","premultiplied")
-    love.graphics.draw(love.graphics.newImage(path),0,0,nil,2)
+    love.graphics.draw(imgmap,0,0,nil,2)
+    love.graphics.setCanvas(level.chunks[cx][cy].sunLight)
+    love.graphics.draw(imgmap,0,-level.mapSize)
     love.graphics.setCanvas()
 
     level.chunks[cx][cy].tempFile = "temp/"..cx.."_"..cy
     level.chunks[cx][cy].fromFile = true
     level.chunks[cx][cy].modified = false
 
+    if level.chunks[cx][cy-1] and level.chunks[cx][cy-1].sunLightArray then
+        local sunlightdata = level.chunks[cx][cy].sunLight:newImageData()
+        local above = level.chunks[cx][cy-1].sunLightArray
+        for i = 0, level.mapSize-1 do
+            local r,g,b = sunlightdata:getPixel(i,0)
+            b = math.min(1,above[i])
+            level.chunks[cx][cy].sunLightArray[i] = r*255*255 + g*255 + b*(level.mapSize+1)
+            level.chunks[cx][cy].sunLightQue[i] = {update=true}
+        end
+    else
+        local sunlightdata = level.chunks[cx][cy].sunLight:newImageData()
+        for i = 0, level.mapSize-1 do
+            local r,g,b = sunlightdata:getPixel(i,0)
+            level.chunks[cx][cy].sunLightArray[i] = r*255*255 + g*255 + b*(level.mapSize+1)
+        end
+    end
+
+
+    --light.generateNewSunLight(cx,cy)
     light.update(cx,cy)
-    light.generateNewSunLight(cx,cy)
 
     level.activeChunks = level.activeChunks+1
 end
@@ -125,7 +151,13 @@ function utils.unloadChunk(cx,cy)
     do
         local path = level.chunks[cx][cy].tempFile or "temp/"..cx.."_"..cy
         if level.chunks[cx][cy].modified then
-            level.chunks[cx][cy].map:encode("png",path)
+            local imgdata = love.image.newImageData(level.mapSize,level.mapSize+1)
+            imgdata:paste(level.chunks[cx][cy].map)
+            local sunlightdata = level.chunks[cx][cy].sunLight:newImageData()
+            imgdata:paste(sunlightdata,0,level.mapSize)
+            imgdata:encode("png",path)
+            imgdata:release()
+            sunlightdata:release()
         end
     end
     
@@ -147,9 +179,12 @@ function utils.loadLevel(path)
     level = {folder="worlds/"..path.."/"}
 
     if not love.filesystem.getInfo(level.folder) then
-        showMessageBox(level.folder.."\ndoesn't exist",{"OK"})
-        parts.start("menu")
-        return 1
+        if showMessageBox(level.folder.."\ndoesn't exist",{"OK","Open save dir"}) == 2 then
+            love.system.openURL(love.filesystem.getSaveDirectory())
+        end
+        --parts.start("menu")
+        --return 1
+        assert(false,"World doesn't exist")
     end
 
     local info = json.decode(love.filesystem.read(level.folder.."info.json"))
@@ -212,9 +247,7 @@ function utils.placetile(ix,iy,icx,icy,colorCode)
     elseif x>=level.mapSize-light.maxLevel then
         b = 1
     end
-    print("B",a,b+a)
-
-    for ncx = a,a+b,b+1-math.abs(b) do        
+    for ncx = a,a+b,b +1-math.abs(b) do        
         local ncy = cy+0
         while true do
             ncy = ncy+1
@@ -225,6 +258,15 @@ function utils.placetile(ix,iy,icx,icy,colorCode)
             end
         end
     end
+
+    level.chunks[cx][cy].sunLightQue[x] = level.chunks[cx][cy].sunLightQue[x] or {}
+    local t = level.chunks[cx][cy].sunLightQue[x]
+    if pixel.getProperty(pixel.big(unpack(colorCode)),"solid") == 1 then
+        t.place = math.min(t.place or math.huge,y+1)+0
+    elseif y == (level.chunks[cx][cy].sunLightArray[x]%(level.mapSize+1))-1 then
+        t.unplace = y+1
+    end
+
 end
 
 function utils.updateDrawableMap(cx,cy)

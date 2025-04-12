@@ -26,34 +26,36 @@ return {tiles,tilebyname,
             uniform vec4 pallete[]]..#ColorPallete..[[];
             uniform float mapSize;
 
-            float unit = 1.0/mapSize;
-
+            
+            
             _ADDITIONAL_
-
+            
             uint findFirst1(uint x) {
                 return uint(log2(float((x & -x))));
             }
-
+                
             vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
-                uvec4 p = uvec4(floor(Texel(tex, texture_coords)*255)); //get colors in 255
+                float unit = 1.0/mapSize;
 
-                if (p.a==0u) return vec4(0,0,0,0);
+                uvec4 p = uvec4(floor(Texel(tex, texture_coords)*255.0)); //get colors in 255
 
-                uvec2 pixelpos = uvec2(texture_coords.x*mapSize,texture_coords.y*mapSize); //set up model and 2x2 coords
-                uvec2 tilepos = uvec2(floor(vec2(pixelpos)/2)*2u);
+                if (p.a==0u) return vec4(0.0);
+
+                vec2 pixelpos = floor(vec2(texture_coords.x*mapSize,texture_coords.y*mapSize)); //set up model and 2x2 coords
+                vec2 tilepos = floor(vec2(pixelpos)/2.0)*2.0;
                 uint model = (p.b >> 4);
 
                 uint index = 0u;
-                index += uint(min(pixelpos.y - tilepos.y,1u)*2.0 + float(min(pixelpos.x - tilepos.x,1u)));
+                index += uint(min(pixelpos.y - tilepos.y,1.0)*2.0 + min(pixelpos.x - tilepos.x,1.0));
 
                 if (((model >> index) & 1u) == 1u) { //model
-                    vec4 add = vec4(0,0,0,0);
+                    vec4 add = vec4(0.0);
                     if ((((p.r >> 1u) & 1u) == 1u)&&(findFirst1(model)==index)) { //interactible mark
-                        add = vec4(0.25,0.25,0.25,0);
+                        add = vec4(0.25,0.25,0.25,0.0);
                     }
                     return pallete[p.g]+add;
                 }
-                return vec4(0,0,0,0);
+                return vec4(0.0);
             }
         ]]))
         renderShader:send("pallete",unpack(ColorPallete))

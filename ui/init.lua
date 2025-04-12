@@ -7,18 +7,17 @@ end
 local fontscale = 3
 
 local fadeShader = love.graphics.newShader([[
-    int slope = 5;
+    float slope = 5.0;
 
     vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
-        vec4 pixel = Texel(tex,texture_coords)*color;
+        vec4 pixel = Texel(tex, texture_coords) * color;
 
-        ivec2 pos = ivec2(screen_coords);
+        float i = mod(screen_coords.x + mod(screen_coords.y, slope), slope);
+        if (i == 0.0) {
+            return vec4(0.0);
+        }
 
-        int i = int(mod(int(pos.x+mod(pos.y,slope)),slope));
-        if (i == 0) {
-            return vec4(0,0,0,0);
-        };
-        return vec4(pixel.r,pixel.g,pixel.b,pixel.a/2);
+        return vec4(pixel.rgb, pixel.a * 0.5);
     }
 ]])
 

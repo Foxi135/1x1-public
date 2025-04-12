@@ -88,6 +88,11 @@ return function(last,arg)
         return 1,1,1,1
     end)
     pixel.pixel = love.graphics.newImage(pixel.pixel)
+    pixel.bit = love.image.newImageData(1,1)
+    pixel.bit:mapPixel(function()
+        return 1,1,1,1
+    end)
+    pixel.bit = love.graphics.newImage(pixel.bit)
     
     pixel.entity1 = love.image.newImageData(2,2)
     pixel.entity1:setPixel(0,0,1,1,1)
@@ -124,6 +129,7 @@ return function(last,arg)
     local status,err = pcall(utils.loadLevel,arg)
     if not status then
         print(err)
+        love.graphics.clear(0,0,0)
         if showMessageBox("Something went wrong while loading this world:\n\""..arg..'"',{"Close",love.graphics.print(err) or "Copy error and close"}) == 2 then
             love.system.setClipboardText(err)
         end

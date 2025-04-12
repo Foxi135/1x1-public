@@ -45,7 +45,13 @@ function saveWorld(level,folder)
         for cy, chunk in pairs(c) do
 
             if level.chunks[cx][cy].modified then
-                level.chunks[cx][cy].map:encode("png",folder..cx.."_"..cy..".png")
+                local imgdata = love.image.newImageData(level.mapSize,level.mapSize+1)
+                imgdata:paste(level.chunks[cx][cy].map,0,0)
+                local sunlightdata = level.chunks[cx][cy].sunLight:newImageData()
+                imgdata:paste(sunlightdata,0,level.mapSize)
+                imgdata:encode("png",folder..cx.."_"..cy..".png")
+                imgdata:release()
+                sunlightdata:release()
             end
 
         end
@@ -520,6 +526,52 @@ return {
                 end
             end
 
+
+
+
+            local arr = level.chunks[cx][cy].sunLightArray
+            if table.hasContent(level.chunks[cx][cy].sunLightQue) then
+                love.graphics.setCanvas(level.chunks[cx][cy].sunLight)
+                love.graphics.setBlendMode("replace","premultiplied")
+                local clamp = level.mapSize+1
+                local A,B = level.chunks[cx][cy].map,(level.chunks[cx][cy-1] or {}).sunLightArray or {}
+                for x, t in pairs(level.chunks[cx][cy].sunLightQue) do
+                    local b = math.floor(arr[x]/clamp)
+                    local arry = arr[x]%clamp
+                    local nb
+                    local hastile = math.min(arr[x],1)+0
+                    if t.place and (t.place<arry or arry == 0)then
+                        arr[x] = t.place+clamp*b
+                        setColor(math.floor(t.place/255)/255,(t.place%255)/255,b,1)
+                        love.graphics.draw(pixel.bit,x,0)
+                        nb = 1
+                    elseif t.unplace then
+                        nb = light.scanSunColumn(x,A,arr,B)
+                    elseif t.update then
+                        setColor(math.floor(arry/255)/255,(arry%255)/255,b,1)
+                        love.graphics.draw(pixel.bit,x,0)
+                    end
+
+                    if nb and (hastile~=nb) then
+                        local ncy = cy+0
+                        while true do
+                            ncy = ncy+1
+                            if not utils.chunkExists(cx,ncy) then break end
+                            local narr = level.chunks[cx][ncy].sunLightArray
+                            narr[x] = narr[x]%clamp +clamp*nb
+                            level.chunks[cx][ncy].sunLightQue[x] = level.chunks[cx][ncy].sunLightQue[x] or {}
+                            level.chunks[cx][ncy].sunLightQue[x].update = true
+    
+                            if narr[x]%clamp ~= 0 then
+                                break
+                            end
+                        end
+                    end
+                end
+                love.graphics.setCanvas()
+
+                level.chunks[cx][cy].sunLightQue = {}
+            end
         end
 
         for i,cx,cy in cam.eachVisibleChunk() do -- load chunks

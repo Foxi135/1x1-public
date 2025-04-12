@@ -10,10 +10,16 @@ end
 function showMessageBox(message, buttonlist)
 	local result
 
+	if data.AutoUiScale then
+		data.uiScale = math.max(1,math.floor(math.min(love.graphics.getDimensions())/(12*40)*2)/2)
+	
+	end
+
 	local w = 10
 	local bw = w/#buttonlist
 	local template = {gridw=w,gridh=4,size=40,cascade={button={x=1,w=bw,h=1,padding=4,text_size=2}},align="center",
-		{tag="label",label=message.."",x=0,y=1,text_size=2,w=w,h=3}
+		{tag="label",label=message.."",x=0,y=1,text_size=2,w=w,h=3},
+		{tag="label",label=(debug.getinfo(2, "S")).source,x=0,y=-1,text_size=1,w=w,h=3}
 	}
 	for k, v in pairs(buttonlist) do
 		table.insert(template,{tag="button",label=v,y=3,x=bw*(k-1),clicked=function()
@@ -61,21 +67,24 @@ function showMessageBox(message, buttonlist)
 end
 
 stripesShader = love.graphics.newShader([[
-    int slope = 5;
+	float slope = 5.0;
 
-    vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
-        ivec2 pos = ivec2(screen_coords);
-        int s = 1;
-        if (color.a*255 == 180) {
-            color.a = 1;
-            s = -1;
-        }
-        int i = int(mod(int(pos.x+mod(pos.y,slope)*s),slope));
-        if (i == 0) {
-            return Texel(tex,texture_coords)*color;
-        };
-        return vec4(0,0,0,0);
-    }
+	vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
+		float s = 1.0;
+		if (color.a * 255.0 == 180.0) {
+			color.a = 1.0;
+			s = -1.0;
+		}
+
+		float modY = mod(screen_coords.y, slope);
+		float posSum = screen_coords.x + modY * s;
+		float i = mod(posSum, slope);
+
+		if (i == 0.0) {
+			return Texel(tex, texture_coords) * color;
+		}
+		return vec4(0.0);
+	}
 ]])
 
 

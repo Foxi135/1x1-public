@@ -8,6 +8,9 @@ function buttonFuncs.openWorldView(hold)
             processed = nil
             parts.start("game",hold.."")
         end},
+        {tag="button",label="directory",x=1,y=5,w=4,hold=hold.."",clicked=function(hold)
+            love.system.openURL(love.filesystem.getSaveDirectory().."/worlds/"..hold.."/")
+        end},
         {tag="button",label="delete",x=1,y=11,w=2,hold=hold.."",clicked=function(hold)
             if showMessageBox("Do you want to delete world "..hold.."?",{"No","Yes"}) == 2 then
                 local folder = "worlds/"..hold.."/"
@@ -322,6 +325,13 @@ return {
                             maxy_table[x] = maxy
                         end
                         v.y = maxy
+                        if v.cycle then
+                            for k, w in pairs(v.cycle) do
+                                if w == data[v.id] then
+                                    v.option = k
+                                end
+                            end
+                        end
                         table.insert(r,v)
                     end
 
