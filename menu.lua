@@ -224,6 +224,10 @@ function buttonFuncs.newWorld(hold)
         {tag="input",label="",id="worldname",x=1,y=4,w=8},
         {tag="button",label="build",x=1,y=11,w=4,hold=hold[2].."",clicked=function(hold)
             local world_name = processed[1].dynamic.worldname.field.text
+            if string.find(world_name, '[\\/:%*%"%?<>|]') then
+                showMessageBox("Illegal directory name\n"..world_name,{"OK"})
+                return
+            end
             if love.filesystem.getInfo("worlds/"..world_name) then
                 if showMessageBox("World "..world_name.." already exist,\ndo you want to write over it?",{"No","Yes"}) == 2 then
                     for _, v in ipairs(love.filesystem.getDirectoryItems("worlds/"..world_name)) do

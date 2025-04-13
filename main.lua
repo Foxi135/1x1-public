@@ -17,10 +17,20 @@ function showMessageBox(message, buttonlist)
 
 	local w = 10
 	local bw = w/#buttonlist
-	local template = {gridw=w,gridh=4,size=40,cascade={button={x=1,w=bw,h=1,padding=4,text_size=2}},align="center",
-		{tag="label",label=message.."",x=0,y=1,text_size=2,w=w,h=3},
-		{tag="label",label=(debug.getinfo(2, "S")).source,x=0,y=-1,text_size=1,w=w,h=3}
-	}
+	local template
+	if type(message) == "table" then
+		template = {gridw=w,gridh=4,size=40,cascade={button={x=1,w=bw,h=1,padding=4,text_size=2}},align="center",
+			{tag="label",label=(debug.getinfo(2, "S")).source,x=0,y=-1,text_size=1,w=w,h=3}
+		}
+		for k, v in pairs(message) do
+			table.insert(template,{tag="label",label=v[1].."",x=0,y=k,text_size=(v.size or 2)+0,w=w,h=3,multiline=v.multiline and false or true})
+		end
+	else
+		template = {gridw=w,gridh=4,size=40,cascade={button={x=1,w=bw,h=1,padding=4,text_size=2}},align="center",
+			{tag="label",label=message.."",x=0,y=1,text_size=2,w=w,h=3},
+			{tag="label",label=(debug.getinfo(2, "S")).source,x=0,y=-1,text_size=1,w=w,h=3}
+		}
+	end
 	for k, v in pairs(buttonlist) do
 		table.insert(template,{tag="button",label=v,y=3,x=bw*(k-1),clicked=function()
 			result = k
@@ -65,6 +75,32 @@ function showMessageBox(message, buttonlist)
 	while love.event.pump() or love.mouse.isDown(1) do end
 	return result
 end
+
+do
+	function string.explode(str, delimiter)
+		local result = {}
+		local pattern = "([^" .. delimiter .. "]+)"
+		for match in string.gmatch(str, pattern) do
+			table.insert(result, match)
+		end
+		return result
+	end
+	local function handler(err)
+		return debug.traceback("Error: " .. tostring(err), 2)
+	end
+	function safecall(func,...)
+		local result = {xpcall(func,handler,...)}
+		if result[1] then
+			return unpack(result,2)
+		else
+			if showMessageBox({{"Something went wrong"},{string.explode(result[2],"\n")[1].."\n...",size=1}},{"Close",love.graphics.print(result[2]) or "Copy error and close"}) == 2 then
+				love.system.setClipboardText(result[2])
+			end
+			parts.start("menu")
+		end
+	end
+end
+
 
 stripesShader = love.graphics.newShader([[
 	float slope = 5.0;
@@ -164,7 +200,7 @@ function love.run()
 		end
 		parts.loaded = p
 
-		parts.entries[p].load(lastLoaded,arg)
+		safecall(parts.entries[p].load,lastLoaded,arg)
 		scene = parts.entries[parts.loaded]
 	end
 

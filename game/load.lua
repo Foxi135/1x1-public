@@ -130,7 +130,7 @@ return function(last,arg)
     if not status then
         print(err)
         love.graphics.clear(0,0,0)
-        if showMessageBox("Something went wrong while loading this world:\n\""..arg..'"',{"Close",love.graphics.print(err) or "Copy error and close"}) == 2 then
+        if showMessageBox({{"Something went wrong while loading this world:\n\""..arg..'"'},{"\n"..err,size=1}},{"Close",love.graphics.print(err) or "Copy error and close"}) == 2 then
             love.system.setClipboardText(err)
         end
         parts.start("menu")
@@ -194,7 +194,7 @@ return function(last,arg)
     playerID = utils.summonEntity("player",level.player.x,level.player.y,level.player.cx,level.player.cy)
     level.entities[playerID].color = entityColor.addColor(level.player.color)
     level.entities[playerID].content = level.player.inventory
-    level.entities[playerID].inHand = level.player.inHand+0
+    level.entities[playerID].inHand = level.player.inHand
     imageEntityPallete,quadPallete = entityColor.refresh()
     do
         local entity = level.entities[playerID]

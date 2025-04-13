@@ -189,14 +189,24 @@ function utils.loadLevel(path)
         end
         --parts.start("menu")
         --return 1
-        assert(false,"World doesn't exist")
+        error("World doesn't exist")
     end
+    if not love.filesystem.getInfo(level.folder.."info.json") then
+        error("info.json is missing")
+    end
+    if not love.filesystem.getInfo(level.folder.."entities") then
+        error("Couldn't find \"entities\" file")
+    end
+
 
     local info = json.decode(love.filesystem.read(level.folder.."info.json"))
 
     level.mapSize = info.mapSize
     level.player = info.player
     level.stackLimit = info.stackLimit
+    if not level.player.inventory then
+        error("World will not be compatible (player inventory is missing)")
+    end
     level.chunks = {}
 
     level.entities = binser.deserialize((love.filesystem.read(level.folder.."entities")))[1]

@@ -1,6 +1,7 @@
 
 local items = {
     offset = 0xffffffff, --idk if i will ever need it
+    -- wait, what was it for in the first place?
     texsize = 8,
     {name="iron axe", color=5, texture=1, maxdur=300},
     {name="iron pickaxe", color=5, texture=2, maxdur=300},
